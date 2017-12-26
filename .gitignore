@@ -1,1 +1,6 @@
 vendor
+mydb.db
+/jacquard
+/cmd/jacquard/jacquard
+/client
+/cmd/client/client

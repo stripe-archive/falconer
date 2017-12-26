@@ -1,4 +1,13 @@
+syntax = "proto3";
+package jacquard;
 
-service SpanReceiver {
+import "github.com/stripe/veneur/ssf/sample.proto";
 
+service Jacquard {
+
+  rpc BidiSpans(stream ssf.SSFSpan) returns (SpanResponse) {}
+}
+
+message SpanResponse {
+  string greeting = 1;
 }
