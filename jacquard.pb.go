@@ -64,7 +64,7 @@ const _ = grpc.SupportPackageIsVersion4
 // Client API for Jacquard service
 
 type JacquardClient interface {
-	BidiSpans(ctx context.Context, opts ...grpc.CallOption) (Jacquard_BidiSpansClient, error)
+	SendSpans(ctx context.Context, opts ...grpc.CallOption) (Jacquard_SendSpansClient, error)
 }
 
 type jacquardClient struct {
@@ -75,30 +75,30 @@ func NewJacquardClient(cc *grpc.ClientConn) JacquardClient {
 	return &jacquardClient{cc}
 }
 
-func (c *jacquardClient) BidiSpans(ctx context.Context, opts ...grpc.CallOption) (Jacquard_BidiSpansClient, error) {
-	stream, err := grpc.NewClientStream(ctx, &_Jacquard_serviceDesc.Streams[0], c.cc, "/jacquard.Jacquard/BidiSpans", opts...)
+func (c *jacquardClient) SendSpans(ctx context.Context, opts ...grpc.CallOption) (Jacquard_SendSpansClient, error) {
+	stream, err := grpc.NewClientStream(ctx, &_Jacquard_serviceDesc.Streams[0], c.cc, "/jacquard.Jacquard/SendSpans", opts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &jacquardBidiSpansClient{stream}
+	x := &jacquardSendSpansClient{stream}
 	return x, nil
 }
 
-type Jacquard_BidiSpansClient interface {
+type Jacquard_SendSpansClient interface {
 	Send(*ssf.SSFSpan) error
 	CloseAndRecv() (*SpanResponse, error)
 	grpc.ClientStream
 }
 
-type jacquardBidiSpansClient struct {
+type jacquardSendSpansClient struct {
 	grpc.ClientStream
 }
 
-func (x *jacquardBidiSpansClient) Send(m *ssf.SSFSpan) error {
+func (x *jacquardSendSpansClient) Send(m *ssf.SSFSpan) error {
 	return x.ClientStream.SendMsg(m)
 }
 
-func (x *jacquardBidiSpansClient) CloseAndRecv() (*SpanResponse, error) {
+func (x *jacquardSendSpansClient) CloseAndRecv() (*SpanResponse, error) {
 	if err := x.ClientStream.CloseSend(); err != nil {
 		return nil, err
 	}
@@ -112,32 +112,32 @@ func (x *jacquardBidiSpansClient) CloseAndRecv() (*SpanResponse, error) {
 // Server API for Jacquard service
 
 type JacquardServer interface {
-	BidiSpans(Jacquard_BidiSpansServer) error
+	SendSpans(Jacquard_SendSpansServer) error
 }
 
 func RegisterJacquardServer(s *grpc.Server, srv JacquardServer) {
 	s.RegisterService(&_Jacquard_serviceDesc, srv)
 }
 
-func _Jacquard_BidiSpans_Handler(srv interface{}, stream grpc.ServerStream) error {
-	return srv.(JacquardServer).BidiSpans(&jacquardBidiSpansServer{stream})
+func _Jacquard_SendSpans_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(JacquardServer).SendSpans(&jacquardSendSpansServer{stream})
 }
 
-type Jacquard_BidiSpansServer interface {
+type Jacquard_SendSpansServer interface {
 	SendAndClose(*SpanResponse) error
 	Recv() (*ssf.SSFSpan, error)
 	grpc.ServerStream
 }
 
-type jacquardBidiSpansServer struct {
+type jacquardSendSpansServer struct {
 	grpc.ServerStream
 }
 
-func (x *jacquardBidiSpansServer) SendAndClose(m *SpanResponse) error {
+func (x *jacquardSendSpansServer) SendAndClose(m *SpanResponse) error {
 	return x.ServerStream.SendMsg(m)
 }
 
-func (x *jacquardBidiSpansServer) Recv() (*ssf.SSFSpan, error) {
+func (x *jacquardSendSpansServer) Recv() (*ssf.SSFSpan, error) {
 	m := new(ssf.SSFSpan)
 	if err := x.ServerStream.RecvMsg(m); err != nil {
 		return nil, err
@@ -151,8 +151,8 @@ var _Jacquard_serviceDesc = grpc.ServiceDesc{
 	Methods:     []grpc.MethodDesc{},
 	Streams: []grpc.StreamDesc{
 		{
-			StreamName:    "BidiSpans",
-			Handler:       _Jacquard_BidiSpans_Handler,
+			StreamName:    "SendSpans",
+			Handler:       _Jacquard_SendSpans_Handler,
 			ClientStreams: true,
 		},
 	},
@@ -170,8 +170,8 @@ var fileDescriptor0 = []byte{
 	0x0b, 0x72, 0x52, 0x21, 0x9a, 0x94, 0xb4, 0xb8, 0x78, 0x82, 0x0b, 0x12, 0xf3, 0x82, 0x52, 0x8b,
 	0x0b, 0xf2, 0xf3, 0x8a, 0x53, 0x85, 0xa4, 0xb8, 0x38, 0xd2, 0x8b, 0x52, 0x53, 0x4b, 0x32, 0xf3,
 	0xd2, 0x25, 0x18, 0x15, 0x18, 0x35, 0x38, 0x83, 0xe0, 0x7c, 0x23, 0x47, 0x2e, 0x0e, 0x2f, 0xa8,
-	0x15, 0x42, 0xa6, 0x5c, 0x9c, 0x4e, 0x99, 0x29, 0x99, 0x20, 0xbd, 0xc5, 0x42, 0x3c, 0x7a, 0xc5,
+	0x15, 0x42, 0xa6, 0x5c, 0x9c, 0xc1, 0xa9, 0x79, 0x29, 0x20, 0xbd, 0xc5, 0x42, 0x3c, 0x7a, 0xc5,
 	0xc5, 0x69, 0x7a, 0xc1, 0xc1, 0x6e, 0x20, 0xae, 0x94, 0x98, 0x1e, 0xdc, 0x61, 0xc8, 0x46, 0x2b,
-	0x31, 0x68, 0x30, 0x26, 0xb1, 0x81, 0x6d, 0x35, 0x06, 0x04, 0x00, 0x00, 0xff, 0xff, 0x53, 0xfa,
-	0x13, 0x08, 0xbc, 0x00, 0x00, 0x00,
+	0x31, 0x68, 0x30, 0x26, 0xb1, 0x81, 0x6d, 0x35, 0x06, 0x04, 0x00, 0x00, 0xff, 0xff, 0x7a, 0x04,
+	0x86, 0xfb, 0xbc, 0x00, 0x00, 0x00,
 }

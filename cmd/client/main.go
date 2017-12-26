@@ -24,7 +24,7 @@ func main() {
 		Name: "fart",
 	}
 	log.Println("Sending spans")
-	stream, err := client.BidiSpans(context.Background())
+	stream, err := client.SendSpans(context.Background())
 	if err != nil {
 		log.Fatalf("sending span %v", err)
 	}

@@ -18,12 +18,12 @@ type server struct {
 	spans []*ssf.SSFSpan
 }
 
-func (s *server) BidiSpans(stream jacquard.Jacquard_BidiSpansServer) error {
+func (s *server) SendSpans(stream jacquard.Jacquard_SendSpansServer) error {
 	for {
 		in, err := stream.Recv()
 		if err == io.EOF {
 			fmt.Println("Sending response")
-			return stream.Send(&jacquard.SpanResponse{
+			return stream.SendMsg(&jacquard.SpanResponse{
 				Greeting: "fart",
 			})
 		}

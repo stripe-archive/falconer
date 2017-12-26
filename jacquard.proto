@@ -5,7 +5,7 @@ import "github.com/stripe/veneur/ssf/sample.proto";
 
 service Jacquard {
 
-  rpc BidiSpans(stream ssf.SSFSpan) returns (SpanResponse) {}
+  rpc SendSpans(stream ssf.SSFSpan) returns (SpanResponse) {}
 }
 
 message SpanResponse {
