@@ -2,24 +2,37 @@ package jacquard
 
 import (
 	"sync"
+	"time"
 
 	"github.com/stripe/veneur/ssf"
 )
 
+type Item struct {
+	span       *ssf.SSFSpan
+	expiration int64
+}
+
 type Worker struct {
 	SpanChan chan *ssf.SSFSpan
 	QuitChan chan struct{}
-	Spans    map[int64][]*ssf.SSFSpan
+	Items    map[int64]*Item
 	mutex    sync.Mutex
 }
 
 func NewWorker() *Worker {
-	return &Worker{
+	w := &Worker{
 		SpanChan: make(chan *ssf.SSFSpan),
 		QuitChan: make(chan struct{}),
-		Spans:    make(map[int64][]*ssf.SSFSpan),
+		Items:    make(map[int64]*Item),
 		mutex:    sync.Mutex{},
 	}
+	ticker := time.NewTicker(time.Second * 1)
+	go func() {
+		for t := range ticker.C {
+			w.Sweep(t.Unix())
+		}
+	}()
+	return w
 }
 
 func (w *Worker) Work() {
@@ -37,13 +50,49 @@ func (w *Worker) AddSpan(span *ssf.SSFSpan) {
 	w.mutex.Lock()
 	defer w.mutex.Unlock()
 
-	if _, present := w.Spans[span.Id]; !present {
-		w.Spans[span.TraceId] = []*ssf.SSFSpan{}
+	w.Items[span.Id] = &Item{
+		span:       span,
+		expiration: time.Now().Add(time.Minute * 1).Unix(),
 	}
-
-	w.Spans[span.TraceId] = append(w.Spans[span.TraceId], span)
 }
 
 func (w *Worker) GetTrace(id int64) []*ssf.SSFSpan {
-	return w.Spans[id]
+	var spans []*ssf.SSFSpan
+	for _, item := range w.Items {
+		if item.span.TraceId == id {
+			spans = append(spans, item.span)
+		}
+	}
+	return spans
+}
+
+func (w *Worker) FindSpans(tags map[string]string, resultChan chan []*ssf.SSFSpan) {
+	var foundSpans []*ssf.SSFSpan
+	for _, item := range w.Items {
+		span := item.span
+		// scanned++
+		for fk, fv := range tags {
+			if v, ok := span.Tags[fk]; ok {
+				if v == fv {
+					foundSpans = append(foundSpans, span)
+					continue
+				}
+			}
+		}
+	}
+
+	resultChan <- foundSpans
+}
+
+func (w *Worker) Sweep(expireTime int64) {
+	w.mutex.Lock()
+	defer w.mutex.Unlock()
+	expired := 0
+	for key, item := range w.Items {
+		if item.expiration <= expireTime {
+			delete(w.Items, key)
+			expired++
+		}
+	}
+	// fmt.Printf("Expired %d\n", expired)
 }

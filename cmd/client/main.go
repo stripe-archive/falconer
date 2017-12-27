@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"math/rand"
 	"time"
@@ -52,7 +51,7 @@ func main() {
 				Tags:    tags,
 			}
 			spans[j] = &span
-			fmt.Println(span.TraceId)
+			// fmt.Println(span.TraceId)
 		}
 		err2 := stream.SendMsg(&jacquard.SpanBatch{Spans: spans})
 		if err2 != nil {

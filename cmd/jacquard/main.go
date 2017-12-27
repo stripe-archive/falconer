@@ -73,27 +73,23 @@ func (s *JacquardServer) FindSpans(req *jacquard.FindSpanRequest, stream jacquar
 
 	tagsToFind := req.GetTags()
 
+	resultChan := make(chan []*ssf.SSFSpan)
+
 	start := time.Now()
-	scanned := 0
-	var foundSpans []*ssf.SSFSpan
+
 	for _, worker := range s.workers {
-		for _, spans := range worker.Spans {
-			for _, span := range spans {
-				scanned++
-				for fk, fv := range tagsToFind {
-					if v, ok := span.Tags[fk]; ok {
-						if v == fv {
-							foundSpans = append(foundSpans, span)
-							continue
-						}
-					}
-				}
-			}
-		}
+		go func(w *jacquard.Worker, tagsToFind map[string]string, resultChan chan []*ssf.SSFSpan) {
+			w.FindSpans(tagsToFind, resultChan)
+		}(worker, tagsToFind, resultChan)
+	}
+
+	var foundSpans []*ssf.SSFSpan
+	for i := int64(0); i < s.workerCount; i++ {
+		foundSpans = append(foundSpans, <-resultChan...)
 	}
 
 	duration := time.Since(start)
-	log.Printf("Scanned %d in %f seconds @ %f/second", scanned, duration.Seconds(), float64(scanned)/duration.Seconds())
+	log.Printf("Scanned for %f seconds", duration.Seconds())
 
 	for _, span := range foundSpans {
 		stream.Send(span)
