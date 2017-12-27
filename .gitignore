@@ -1,6 +1,7 @@
 vendor
-mydb.db
 /jacquard
 /cmd/jacquard/jacquard
 /client
 /cmd/client/client
+/getter
+/cmd/getter/getter

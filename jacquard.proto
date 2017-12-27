@@ -5,9 +5,25 @@ import "github.com/stripe/veneur/ssf/sample.proto";
 
 service Jacquard {
 
-  rpc SendSpans(stream ssf.SSFSpan) returns (SpanResponse) {}
+  rpc SendSpans(stream SpanBatch) returns (SpanResponse) {}
+
+  rpc FindSpans(FindSpanRequest) returns (stream ssf.SSFSpan) {}
+
+  rpc GetTrace(TraceRequest) returns (stream ssf.SSFSpan) {}
+}
+
+message FindSpanRequest {
+  map<string, string> tags = 1;
+}
+
+message SpanBatch {
+  repeated ssf.SSFSpan spans = 1;
 }
 
 message SpanResponse {
   string greeting = 1;
+}
+
+message TraceRequest {
+  int64 traceID = 1;
 }
