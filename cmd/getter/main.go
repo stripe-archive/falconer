@@ -8,7 +8,7 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/gphat/jacquard"
+	"github.com/gphat/falconer"
 	"google.golang.org/grpc"
 )
 
@@ -28,18 +28,18 @@ func main() {
 
 	rand.Seed(time.Now().Unix())
 
-	client := jacquard.NewJacquardClient(conn)
+	client := falconer.NewFalconerClient(conn)
 
 	// log.Println("Send request")
-	// resp, err := client.WatchSpans(context.Background(), &jacquard.FindSpanRequest{
+	// resp, err := client.WatchSpans(context.Background(), &falconer.FindSpanRequest{
 	// 	Tags: map[string]string{"foo": "three"},
 	// })
 
-	resp, err := client.FindSpans(context.Background(), &jacquard.FindSpanRequest{
+	resp, err := client.FindSpans(context.Background(), &falconer.FindSpanRequest{
 		Tags: map[string]string{"foo": "three"},
 	})
 
-	// resp, err := client.GetTrace(context.Background(), &jacquard.TraceRequest{
+	// resp, err := client.GetTrace(context.Background(), &falconer.TraceRequest{
 	// 	TraceID: int64(*id),
 	// })
 	if err != nil {

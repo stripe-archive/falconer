@@ -6,7 +6,7 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/gphat/jacquard"
+	"github.com/gphat/falconer"
 	"github.com/stripe/veneur/ssf"
 	"google.golang.org/grpc"
 )
@@ -26,7 +26,7 @@ func main() {
 
 	rand.Seed(time.Now().Unix())
 
-	client := jacquard.NewJacquardClient(conn)
+	client := falconer.NewFalconerClient(conn)
 
 	stream, err := client.SendSpans(context.Background())
 	if err != nil {
@@ -52,7 +52,7 @@ func main() {
 			}
 			spans[j] = &span
 		}
-		err2 := stream.SendMsg(&jacquard.SpanBatch{Spans: spans})
+		err2 := stream.SendMsg(&falconer.SpanBatch{Spans: spans})
 		if err2 != nil {
 			log.Fatalf("Err sending: %v", err2)
 		}

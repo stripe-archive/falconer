@@ -1,4 +1,4 @@
-package jacquard
+package falconer
 
 import (
 	"log"

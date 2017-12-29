@@ -1,6 +1,6 @@
 vendor
-/jacquard
-/cmd/jacquard/jacquard
+/falconer
+/cmd/falconer/falconer
 /client
 /cmd/client/client
 /getter

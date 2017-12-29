@@ -1,12 +1,12 @@
-# Jacquard
+# Falconer
 
-Jacquard is a demonstration of a tracing span collector and RPC service. It collects and stores spans for a limited amount of time whilst allowing searches of current spans, streaming of incoming spans and retrieval of entire traces.
+Falconer is a demonstration of a tracing span collector and RPC service. It collects and stores spans for a limited amount of time whilst allowing searches of current spans, streaming of incoming spans and retrieval of entire traces.
 
 It is intended to provide a shared-nothing, horizontally scaleable cluster wherein millions of spans per-second may be written and searched. A currently non-existent aggregator could act as a convenience service for
 
 ## Architecture
 
-Jacquard creates a large number of worker goroutines each of which holds a map of spanids to an `Item`. Each `Item` is a span and it's expiration date. Writes are distributed across these workers to improve write throughput.
+Falconer creates a large number of worker goroutines each of which holds a map of spanids to an `Item`. Each `Item` is a span and it's expiration date. Writes are distributed across these workers to improve write throughput.
 
 Searches are performed by each worker naively iterating over all of the spans in it's map and returning matches. Streaming searches are performed by adding a "watch" to each worker which matches against any incoming spans and returning them as a match.
 
@@ -18,7 +18,7 @@ Localhost to localhost testing shows on a modern Macbook Pro show:
 
 # Compatibility
 
-Jacquard uses [SSF](https://github.com/stripe/veneur/tree/master/ssf) as it's span representation. Clients may write and read from it using [gRPC](https://github.com/gphat/jacquard/blob/master/jacquard.proto).
+Falconer uses [SSF](https://github.com/stripe/veneur/tree/master/ssf) as it's span representation. Clients may write and read from it using [gRPC](https://github.com/gphat/falconer/blob/master/falconer.proto).
 
 # Features
 

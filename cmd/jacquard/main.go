@@ -7,30 +7,30 @@ import (
 	"net"
 	"time"
 
-	"github.com/gphat/jacquard"
+	"github.com/gphat/falconer"
 	"google.golang.org/grpc"
 
 	"github.com/stripe/veneur/ssf"
 )
 
-type JacquardServer struct {
+type FalconerServer struct {
 	workerCount int64
-	workers     []*jacquard.Worker
+	workers     []*falconer.Worker
 }
 
-func NewServer(workerCount int64) *JacquardServer {
-	workers := make([]*jacquard.Worker, workerCount)
+func NewServer(workerCount int64) *FalconerServer {
+	workers := make([]*falconer.Worker, workerCount)
 	for i := range workers {
-		workers[i] = jacquard.NewWorker()
+		workers[i] = falconer.NewWorker()
 		go workers[i].Work()
 	}
-	return &JacquardServer{
+	return &FalconerServer{
 		workerCount: workerCount,
 		workers:     workers,
 	}
 }
 
-func (s *JacquardServer) DispatchSpan(span *ssf.SSFSpan) {
+func (s *FalconerServer) DispatchSpan(span *ssf.SSFSpan) {
 	spanChan := s.workers[span.TraceId%s.workerCount].SpanChan
 	select {
 	case spanChan <- span:
@@ -39,7 +39,7 @@ func (s *JacquardServer) DispatchSpan(span *ssf.SSFSpan) {
 	}
 }
 
-func (s *JacquardServer) SendSpans(stream jacquard.Jacquard_SendSpansServer) error {
+func (s *FalconerServer) SendSpans(stream falconer.Falconer_SendSpansServer) error {
 	count := 0
 	start := time.Now()
 	for {
@@ -47,7 +47,7 @@ func (s *JacquardServer) SendSpans(stream jacquard.Jacquard_SendSpansServer) err
 		if err == io.EOF {
 			d := time.Since(start)
 			fmt.Printf("Sending response: %d in %f @ %f/sec\n", count, d.Seconds(), float64(count)/d.Seconds())
-			return stream.SendMsg(&jacquard.SpanResponse{
+			return stream.SendMsg(&falconer.SpanResponse{
 				Greeting: "fart",
 			})
 		}
@@ -61,7 +61,7 @@ func (s *JacquardServer) SendSpans(stream jacquard.Jacquard_SendSpansServer) err
 	}
 }
 
-func (s *JacquardServer) GetTrace(req *jacquard.TraceRequest, stream jacquard.Jacquard_GetTraceServer) error {
+func (s *FalconerServer) GetTrace(req *falconer.TraceRequest, stream falconer.Falconer_GetTraceServer) error {
 	log.Printf("Looking for %v\n", req.GetTraceID())
 	worker := s.workers[req.GetTraceID()%s.workerCount]
 	spans := worker.GetTrace(req.GetTraceID())
@@ -73,7 +73,7 @@ func (s *JacquardServer) GetTrace(req *jacquard.TraceRequest, stream jacquard.Ja
 	return nil
 }
 
-func (s *JacquardServer) FindSpans(req *jacquard.FindSpanRequest, stream jacquard.Jacquard_FindSpansServer) error {
+func (s *FalconerServer) FindSpans(req *falconer.FindSpanRequest, stream falconer.Falconer_FindSpansServer) error {
 	log.Printf("Looking for %v", req)
 
 	tagsToFind := req.GetTags()
@@ -83,7 +83,7 @@ func (s *JacquardServer) FindSpans(req *jacquard.FindSpanRequest, stream jacquar
 	start := time.Now()
 
 	for _, worker := range s.workers {
-		go func(w *jacquard.Worker, tagsToFind map[string]string, resultChan chan []*ssf.SSFSpan) {
+		go func(w *falconer.Worker, tagsToFind map[string]string, resultChan chan []*ssf.SSFSpan) {
 			w.FindSpans(tagsToFind, resultChan)
 		}(worker, tagsToFind, resultChan)
 	}
@@ -103,14 +103,14 @@ func (s *JacquardServer) FindSpans(req *jacquard.FindSpanRequest, stream jacquar
 	return nil
 }
 
-func (s *JacquardServer) WatchSpans(req *jacquard.FindSpanRequest, stream jacquard.Jacquard_WatchSpansServer) error {
+func (s *FalconerServer) WatchSpans(req *falconer.FindSpanRequest, stream falconer.Falconer_WatchSpansServer) error {
 	foundChan := make(chan *ssf.SSFSpan)
 
 	log.Printf("Adding watch for %v\n", req.GetTags())
 	for _, worker := range s.workers {
 		worker.AddWatch("farts", req.GetTags(), foundChan)
 	}
-	defer func(s *JacquardServer) {
+	defer func(s *FalconerServer) {
 		for _, worker := range s.workers {
 			fmt.Printf("Removing watch for %v\n", req.GetTags())
 			worker.RemoveWatch("farts")
@@ -141,6 +141,6 @@ func main() {
 	}
 	var opts []grpc.ServerOption
 	grpcServer := grpc.NewServer(opts...)
-	jacquard.RegisterJacquardServer(grpcServer, NewServer(256))
+	falconer.RegisterFalconerServer(grpcServer, NewServer(256))
 	grpcServer.Serve(lis)
 }
