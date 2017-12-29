@@ -10,6 +10,8 @@ service Jacquard {
   rpc FindSpans(FindSpanRequest) returns (stream ssf.SSFSpan) {}
 
   rpc GetTrace(TraceRequest) returns (stream ssf.SSFSpan) {}
+
+  rpc WatchSpans(FindSpanRequest) returns (stream ssf.SSFSpan) {}
 }
 
 message FindSpanRequest {

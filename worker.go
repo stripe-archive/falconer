@@ -1,6 +1,7 @@
 package jacquard
 
 import (
+	"log"
 	"sync"
 	"time"
 
@@ -12,25 +13,41 @@ type Item struct {
 	expiration int64
 }
 
+type Watch struct {
+	FoundChan chan *ssf.SSFSpan
+	Tags      map[string]string
+}
+
 type Worker struct {
-	SpanChan chan *ssf.SSFSpan
-	QuitChan chan struct{}
-	Items    map[int64]*Item
-	mutex    sync.Mutex
+	SpanChan   chan *ssf.SSFSpan
+	WatchChan  chan *ssf.SSFSpan
+	QuitChan   chan struct{}
+	Items      map[int64]*Item
+	Watches    map[string]*Watch
+	mutex      sync.Mutex
+	watchMutex sync.Mutex
 }
 
 func NewWorker() *Worker {
 	w := &Worker{
-		SpanChan: make(chan *ssf.SSFSpan),
-		QuitChan: make(chan struct{}),
-		Items:    make(map[int64]*Item),
-		mutex:    sync.Mutex{},
+		// We make our incoming span channel buffered so that we can use non-blocking
+		// writes. This improves write speed by >= 50% but risks dropping spans if
+		// the buffer is full.
+		SpanChan:  make(chan *ssf.SSFSpan, 1000),
+		WatchChan: make(chan *ssf.SSFSpan, 1000),
+		QuitChan:  make(chan struct{}),
+		Items:     make(map[int64]*Item),
+		Watches:   make(map[string]*Watch),
+		mutex:     sync.Mutex{},
 	}
 	ticker := time.NewTicker(time.Second * 1)
 	go func() {
 		for t := range ticker.C {
 			w.Sweep(t.Unix())
 		}
+	}()
+	go func() {
+		w.WatchWork()
 	}()
 	return w
 }
@@ -46,6 +63,24 @@ func (w *Worker) Work() {
 	}
 }
 
+func (w *Worker) WatchWork() {
+	for {
+		select {
+		case span := <-w.WatchChan:
+			for _, watch := range w.Watches {
+				for tagKey, tagValue := range watch.Tags {
+					if val, ok := span.Tags[tagKey]; ok {
+						if val == tagValue {
+							watch.FoundChan <- span
+							continue // Found a hit, no need to keep looking at this span
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
 func (w *Worker) AddSpan(span *ssf.SSFSpan) {
 	w.mutex.Lock()
 	defer w.mutex.Unlock()
@@ -54,6 +89,31 @@ func (w *Worker) AddSpan(span *ssf.SSFSpan) {
 		span:       span,
 		expiration: time.Now().Add(time.Minute * 1).Unix(),
 	}
+
+	if len(w.Watches) > 0 {
+		select {
+		case w.WatchChan <- span:
+		default:
+			log.Println("Failed to write watched span")
+		}
+	}
+}
+
+func (w *Worker) AddWatch(name string, tags map[string]string, foundChan chan *ssf.SSFSpan) {
+	w.watchMutex.Lock()
+	defer w.watchMutex.Unlock()
+
+	w.Watches[name] = &Watch{
+		FoundChan: foundChan,
+		Tags:      tags,
+	}
+}
+
+func (w *Worker) RemoveWatch(name string) {
+	w.watchMutex.Lock()
+	defer w.watchMutex.Unlock()
+
+	delete(w.Watches, name)
 }
 
 func (w *Worker) GetTrace(id int64) []*ssf.SSFSpan {

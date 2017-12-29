@@ -51,7 +51,6 @@ func main() {
 				Tags:    tags,
 			}
 			spans[j] = &span
-			// fmt.Println(span.TraceId)
 		}
 		err2 := stream.SendMsg(&jacquard.SpanBatch{Spans: spans})
 		if err2 != nil {

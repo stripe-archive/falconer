@@ -30,6 +30,11 @@ func main() {
 
 	client := jacquard.NewJacquardClient(conn)
 
+	// log.Println("Send request")
+	// resp, err := client.WatchSpans(context.Background(), &jacquard.FindSpanRequest{
+	// 	Tags: map[string]string{"foo": "three"},
+	// })
+
 	resp, err := client.FindSpans(context.Background(), &jacquard.FindSpanRequest{
 		Tags: map[string]string{"foo": "three"},
 	})

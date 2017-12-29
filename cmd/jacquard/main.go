@@ -31,7 +31,12 @@ func NewServer(workerCount int64) *JacquardServer {
 }
 
 func (s *JacquardServer) DispatchSpan(span *ssf.SSFSpan) {
-	s.workers[span.TraceId%s.workerCount].SpanChan <- span
+	spanChan := s.workers[span.TraceId%s.workerCount].SpanChan
+	select {
+	case spanChan <- span:
+	default:
+		log.Println("Failed to send message")
+	}
 }
 
 func (s *JacquardServer) SendSpans(stream jacquard.Jacquard_SendSpansServer) error {
@@ -95,6 +100,37 @@ func (s *JacquardServer) FindSpans(req *jacquard.FindSpanRequest, stream jacquar
 		stream.Send(span)
 	}
 
+	return nil
+}
+
+func (s *JacquardServer) WatchSpans(req *jacquard.FindSpanRequest, stream jacquard.Jacquard_WatchSpansServer) error {
+	foundChan := make(chan *ssf.SSFSpan)
+
+	log.Printf("Adding watch for %v\n", req.GetTags())
+	for _, worker := range s.workers {
+		worker.AddWatch("farts", req.GetTags(), foundChan)
+	}
+	defer func(s *JacquardServer) {
+		for _, worker := range s.workers {
+			fmt.Printf("Removing watch for %v\n", req.GetTags())
+			worker.RemoveWatch("farts")
+		}
+	}(s)
+
+	done := false
+	for {
+		select {
+		case found := <-foundChan:
+			stream.Send(found)
+		case <-time.After(time.Second * 30):
+			// Hacky timer because I'm not sure how to detect a disconnected client
+			done = true
+		}
+		if done {
+			break
+		}
+	}
+	// How do we know when this is done?
 	return nil
 }
 
