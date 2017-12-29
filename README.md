@@ -1,8 +1,14 @@
 # Falconer
 
-Falconer is a demonstration of a tracing span collector and RPC service. It collects and stores spans for a limited amount of time whilst allowing searches of current spans, streaming of incoming spans and retrieval of entire traces.
+Falconer is a demonstration of a tracing span collector, buffer and RPC service. It collects and stores spans for a limited amount of time whilst allowing searches of current spans, streaming of incoming spans and retrieval of entire traces.
 
-It is intended to provide a shared-nothing, horizontally scaleable cluster wherein millions of spans per-second may be written and searched. A currently non-existent aggregator could act as a convenience service for
+It is intended to provide an unsampled, shared-nothing, horizontally scaleable cluster wherein millions of spans per second may be written and searched.
+
+# Future Direction
+
+* Improved data structures and algorithms for more efficient operation
+* Programmatic sampling for writing to storage
+* Programmatic aggregation for high level metrics from unsampled spans
 
 ## Architecture
 
