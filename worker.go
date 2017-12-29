@@ -19,10 +19,13 @@ type Watch struct {
 }
 
 type Worker struct {
-	SpanChan   chan *ssf.SSFSpan
-	WatchChan  chan *ssf.SSFSpan
-	QuitChan   chan struct{}
-	Items      map[int64]*Item
+	SpanChan  chan *ssf.SSFSpan
+	WatchChan chan *ssf.SSFSpan
+	QuitChan  chan struct{}
+	// Intentionally not using pointers because of https://github.com/golang/go/issues/9477
+	// which implies maps without pointers are less GC-fussy since we don't have
+	// traverse the pointer
+	Items      map[int64]Item
 	Watches    map[string]*Watch
 	mutex      sync.Mutex
 	watchMutex sync.Mutex
@@ -36,7 +39,7 @@ func NewWorker() *Worker {
 		SpanChan:  make(chan *ssf.SSFSpan, 1000),
 		WatchChan: make(chan *ssf.SSFSpan, 1000),
 		QuitChan:  make(chan struct{}),
-		Items:     make(map[int64]*Item),
+		Items:     make(map[int64]Item),
 		Watches:   make(map[string]*Watch),
 		mutex:     sync.Mutex{},
 	}
@@ -85,7 +88,7 @@ func (w *Worker) AddSpan(span *ssf.SSFSpan) {
 	w.mutex.Lock()
 	defer w.mutex.Unlock()
 
-	w.Items[span.Id] = &Item{
+	w.Items[span.Id] = Item{
 		span:       span,
 		expiration: time.Now().Add(time.Minute * 1).Unix(),
 	}

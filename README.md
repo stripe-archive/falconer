@@ -37,6 +37,7 @@ This is a demonstration at present as has the following limitations:
 * Server stops, spans go away as there is no storage of spans
 * There is no configuration of anything
 * Searches can only be performed on tags and only against exactly matches of values.
+  * Searches are only `AND`
 * Traces are returned as a stream and not assembled in any meaningful way.
 * Watches are ignorant to client connection state and stick around for until a hard timeout of 30s
 * The data structures and algorithms are intentionally naive for simplicity and avoiding premature optimization. This likely uses way too much memory and will probably grow over time.
