@@ -58,7 +58,9 @@ func NewWorker(spanDepth int, watchDepth int, expirationDuration time.Duration) 
 			w.Sweep(t.Unix())
 		}
 	}()
-	// Monitor the watch channel and catch any spans that might match.
+	// Monitor the watch channel and catch any spans that might match. We do this
+	// separately from the write loop such that watches to not overly impact
+	// write throughput.
 	go func() {
 		w.WatchWork()
 	}()
