@@ -1,8 +1,14 @@
 # Falconer
 
-Falconer is a tracing span collector, buffer and RPC service. It collects and stores spans for a limited amount of time whilst allowing searches of current spans, streaming search of incoming spans and retrieval of entire traces.
+Falconer is a tracing span collector, buffer and RPC service. It collects and stores spans for a limited amount of time whilst allowing searches of current spans, streaming search of incoming spans and retrieval of entire traces. It would be best paired with [Veneur](https://github.com/stripe/veneur).
 
-It is intended to provide an unsampled, shared-nothing, horizontally scalable cluster wherein millions of spans per second may be written and searched.
+![Diagram](https://raw.githubusercontent.com/gphat/falconer/master/diagram.png)
+
+Falconer provides an unsampled, shared-nothing, horizontally scalable cluster wherein millions of spans per second may be written and searched. In other words, throw millions of spans at it and let it keep them *all* around for a configurable amount of time. Run more boxes to keep more spans.
+
+For example if you emit 100K spans/sec averaging 2K per span, run a dozen or so instances of Falconer, each keeping a dozen or so GB of spans per instance[0]. Now you can recall any given span for the last 15M. You pick the amount you want based in # of spans `a`, size of spans `b` and retention period `c`: `a * b * c / number of instances = per instance memory required`.
+
+0 - Note that there's likely a lot of wasted memory overhead here and it will likely OOM or grow ridiculously until it is optimized with both improved datastructures and better tuning knobs.
 
 # Features
 
@@ -18,10 +24,10 @@ It is intended to provide an unsampled, shared-nothing, horizontally scalable cl
 
 Falconer creates a large number of worker goroutines each of which holds a map of spanids to an `Item`. Each `Item` is a span and it's expiration time. Writes are distributed across these workers to improve write throughput.
 
-* *Writes* are striped across goroutines using modulus and the span's ID. Each worker adds the incoming spans to it's store. Very little happens in this write path so as to keep speed.
-* *Searches* are performed by each worker naively iterating over all of the spans in it's map and returning matches.
-* *Streaming searches* are performed outside from the write path by adding a "watch" to each worker. Incoming spans are submitted to a watch channel which matches against any incoming spans and returns them as a match.
-* *Expiration* is handled periodically by the workers, deleting any expired spans.
+* **Writes** are striped across goroutines using modulus and the span's ID. Each worker adds the incoming spans to it's store. Very little happens in this write path so as to keep speed.
+* **Searches** are performed by each worker naively iterating over all of the spans in it's map and returning matches.
+* **Streaming searches** are performed outside from the write path by adding a "watch" to each worker. Incoming spans are submitted to a watch channel which matches against any incoming spans and returns them as a match.
+* **Expiration** is handled periodically by the workers, deleting any expired spans.
 
 ## Performance
 
@@ -38,7 +44,8 @@ Falconer uses [SSF](https://github.com/stripe/veneur/tree/master/ssf) as it's sp
 * Improved data structures and algorithms for more efficient operation
 * Programmatic sampling for writing to storage
 * Per-service, hot-configurable expirations
-* Separate service for quering/aggregating spans?
+* Separate service for querying/aggregating spans
+* Output to long term storage (Zipkin, Jaeger, etc?)
 
 ## Shortcomings
 
