@@ -8,7 +8,7 @@ Falconer provides an unsampled, shared-nothing, horizontally scalable cluster wh
 
 For example if you emit 100K spans/sec averaging 2K per span, run a dozen or so instances of Falconer, each keeping a dozen or so GB of spans per instance[0]. Now you can recall any given span for the last 15M. You pick the amount you want based in # of spans `a`, size of spans `b` and retention period `c`: `a * b * c / number of instances = per instance memory required`.
 
-0 - Note that there's likely a lot of wasted memory overhead here and it will likely OOM or grow ridiculously until it is optimized with both improved datastructures and better tuning knobs.
+0 - Note that there's likely a lot of wasted memory overhead here and it will likely OOM or grow ridiculously until it is optimized with both improved data structures and better tuning knobs. See [Shortcomings](https://github.com/gphat/falconer#shortcomings) below!
 
 # Features
 
