@@ -4,7 +4,7 @@ Falconer is a tracing span collector, buffer and RPC service. It collects and st
 
 ![Diagram](https://raw.githubusercontent.com/gphat/falconer/master/diagram.png)
 
-Falconer provides an unsampled, shared-nothing, horizontally scalable cluster wherein millions of spans per second may be written and searched. In other words, throw millions of spans at it and let it keep them *all* around for a configurable amount of time. Run more boxes to keep more spans.
+Falconer provides an unsampled, shared-nothing, horizontally scalable cluster wherein millions of spans per second may be written and searched. In other words, throw millions of spans at it and let it keep them *all* around for a configurable amount of time. Run more boxes to keep more spans and/or more time.
 
 For example if you emit 100K spans/sec averaging 2K per span, run a dozen or so instances of Falconer, each keeping a dozen or so GB of spans per instance[0]. Now you can recall any given span for the last 15M. You pick the amount you want based in # of spans `a`, size of spans `b` and retention period `c`: `a * b * c / number of instances = per instance memory required`.
 
