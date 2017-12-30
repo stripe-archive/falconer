@@ -9,6 +9,8 @@ It is intended to provide an unsampled, shared-nothing, horizontally scaleable c
 * Improved data structures and algorithms for more efficient operation
 * Programmatic sampling for writing to storage
 * Programmatic aggregation for high level metrics from unsampled spans
+* Per-service, hot-configurable expirations
+* Separate service for quering/aggregating spans?
 
 ## Architecture
 
@@ -41,7 +43,6 @@ Falconer uses [SSF](https://github.com/stripe/veneur/tree/master/ssf) as it's sp
 This is a demonstration at present as has the following limitations:
 
 * Server stops, spans go away as there is no storage of spans
-* There is no configuration of anything
 * Searches can only be performed on tags and only against exactly matches of values.
   * Searches are only `AND`
 * Traces are returned as a stream and not assembled in any meaningful way.

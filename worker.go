@@ -31,13 +31,13 @@ type Worker struct {
 	watchMutex sync.Mutex
 }
 
-func NewWorker() *Worker {
+func NewWorker(spanDepth int, watchDepth int, expirationDuration time.Duration) *Worker {
 	w := &Worker{
 		// We make our incoming span channel buffered so that we can use non-blocking
 		// writes. This improves write speed by >= 50% but risks dropping spans if
 		// the buffer is full.
-		SpanChan:  make(chan *ssf.SSFSpan, 1000),
-		WatchChan: make(chan *ssf.SSFSpan, 1000),
+		SpanChan:  make(chan *ssf.SSFSpan, spanDepth),
+		WatchChan: make(chan *ssf.SSFSpan, watchDepth),
 		QuitChan:  make(chan struct{}),
 		Items:     make(map[int64]Item),
 		Watches:   make(map[string]*Watch),

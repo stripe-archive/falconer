@@ -15,13 +15,15 @@ service Falconer {
 }
 
 message FindSpanRequest {
-  map<string, string> tags = 1;
+  string name = 1;
+  map<string, string> tags = 2;
 }
 
 message SpanBatch {
   repeated ssf.SSFSpan spans = 1;
 }
 
+// This clearly needs something else in it. Likely some backpressure stuff.
 message SpanResponse {
   string greeting = 1;
 }

@@ -1,0 +1,21 @@
+---
+# Flag to control if we should emit debugging logs.
+debug: true
+
+# Number of workers we'll distribute writes across. Higher counts mean more
+# concurrency but more memory consumed. You can make this a big number though.
+worker_count: 512
+
+# The address on which to listen for gRPC requests
+listen_address: "localhost:3000"
+
+# The number of spans for the buffered channel used to communicate with the workers.
+# This allows us to do non-blocking writes at the risk of overflowing the channel.
+worker_span_depth: 1000
+
+# The number of spans for the buffered channel used to pass incoming spans from
+# a worker to it's watchers.
+worker_watch_depth: 1000
+
+# How long spans should stick around before expiring.
+span_expiration_duration_seconds: "300s"
