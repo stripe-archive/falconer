@@ -1,10 +1,10 @@
 package falconer
 
 import (
-	"log"
 	"sync"
 	"time"
 
+	"github.com/sirupsen/logrus"
 	"github.com/stripe/veneur/ssf"
 )
 
@@ -33,11 +33,12 @@ type Worker struct {
 	mutex              sync.Mutex
 	watchMutex         sync.Mutex
 	expirationDuration time.Duration
+	log                *logrus.Logger
 }
 
 // NewWorker creates a new worker which stores spans, handles queries and expires
 // old spans.
-func NewWorker(spanDepth int, watchDepth int, expirationDuration time.Duration) *Worker {
+func NewWorker(log *logrus.Logger, spanDepth int, watchDepth int, expirationDuration time.Duration) *Worker {
 	w := &Worker{
 		// We make our incoming span channel buffered so that we can use non-blocking
 		// writes. This improves write speed by >= 50% but risks dropping spans if
@@ -50,6 +51,7 @@ func NewWorker(spanDepth int, watchDepth int, expirationDuration time.Duration) 
 		mutex:              sync.Mutex{},
 		watchMutex:         sync.Mutex{},
 		expirationDuration: expirationDuration,
+		log:                log,
 	}
 	ticker := time.NewTicker(expirationDuration)
 	// Use a ticker to periodically expire spans.
@@ -113,7 +115,7 @@ func (w *Worker) AddSpan(span *ssf.SSFSpan) {
 		select {
 		case w.WatchChan <- span:
 		default:
-			log.Println("Failed to write watched span")
+			w.log.Warn("Failed to write watched span")
 		}
 	}
 }
@@ -179,4 +181,5 @@ func (w *Worker) Sweep(expireTime int64) {
 			expired++
 		}
 	}
+	w.log.WithField("expired_count", expired).Debug("Expired spans")
 }

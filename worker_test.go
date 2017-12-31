@@ -100,7 +100,7 @@ func TestWorkerSweep(t *testing.T) {
 
 	w.Sweep(then.Unix())
 
-	assert.Equal(t, 0, w.Items.Len())
+	assert.Equal(t, 0, len(w.Items))
 }
 
 func TestWorkerWatches(t *testing.T) {
