@@ -22,7 +22,7 @@ func NewServer(log *logrus.Logger, config *Config) (*Server, error) {
 
 	workers := make([]*Worker, config.WorkerCount)
 	for i := range workers {
-		workers[i] = NewWorker(config.WorkerSpanDepth, config.WorkerWatchDepth, expiration)
+		workers[i] = NewWorker(log, config.WorkerSpanDepth, config.WorkerWatchDepth, expiration)
 		go workers[i].Work()
 	}
 	return &Server{
