@@ -4,13 +4,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stripe/veneur/ssf"
 )
 
 func TestWorkerGetTrace(t *testing.T) {
 
-	w := NewWorker(10, 10, time.Second+30)
+	w := NewWorker(logrus.New(), 10, 10, time.Second+30)
 
 	traceID := int64(1235)
 
@@ -39,7 +40,7 @@ func TestWorkerGetTrace(t *testing.T) {
 
 func TestWorkerFindSpans(t *testing.T) {
 
-	w := NewWorker(10, 10, time.Second+30)
+	w := NewWorker(logrus.New(), 10, 10, time.Second+30)
 
 	traceID := int64(1235)
 
@@ -72,11 +73,11 @@ func TestWorkerFindSpans(t *testing.T) {
 func TestWorkerSweep(t *testing.T) {
 
 	expirationDuration := time.Second * 30
-	w := NewWorker(10, 10, expirationDuration)
+	w := NewWorker(logrus.New(), 10, 10, expirationDuration)
 
 	traceID := int64(1235)
 
-	span := &ssf.SSFSpan{
+	span1 := &ssf.SSFSpan{
 		Id:      1234,
 		TraceId: traceID,
 		Tags: map[string]string{
@@ -84,18 +85,27 @@ func TestWorkerSweep(t *testing.T) {
 		},
 	}
 
-	w.AddSpan(span)
+	span2 := &ssf.SSFSpan{
+		Id:      1234,
+		TraceId: traceID,
+		Tags: map[string]string{
+			"foo": "bar",
+		},
+	}
+
+	w.AddSpan(span1)
+	w.AddSpan(span2)
 	// Double the expiration just to be sure
 	then := time.Now().Add(expirationDuration + (time.Second * 1))
 
 	w.Sweep(then.Unix())
 
-	assert.Equal(t, 0, len(w.Items))
+	assert.Equal(t, 0, w.Items.Len())
 }
 
 func TestWorkerWatches(t *testing.T) {
 
-	w := NewWorker(10, 10, time.Second+30)
+	w := NewWorker(logrus.New(), 10, 10, time.Second+30)
 
 	resultChan := make(chan *ssf.SSFSpan, 1)
 	w.AddWatch("farts", map[string]string{"foo": "bar"}, resultChan)
