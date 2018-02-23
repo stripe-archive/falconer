@@ -87,6 +87,7 @@ func (w *Worker) WatchWork() {
 	for {
 		select {
 		case span := <-w.WatchChan:
+			w.mutex.Lock()
 			for _, watch := range w.Watches {
 				for tagKey, tagValue := range watch.Tags {
 					if val, ok := span.Tags[tagKey]; ok {
@@ -97,6 +98,7 @@ func (w *Worker) WatchWork() {
 					}
 				}
 			}
+			w.mutex.Unlock()
 		}
 	}
 }
