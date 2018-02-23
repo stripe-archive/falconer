@@ -4,3 +4,6 @@
 /cmd/client/client
 /getter
 /cmd/getter/getter
+*.swp
+*.swo
+*.swn
