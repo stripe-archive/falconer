@@ -4,8 +4,8 @@ import (
 	"flag"
 	"net"
 
-	"github.com/gphat/falconer"
 	"github.com/sirupsen/logrus"
+	"github.com/stripe/falconer"
 
 	"google.golang.org/grpc"
 )

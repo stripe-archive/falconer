@@ -6,7 +6,7 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/gphat/falconer"
+	"github.com/stripe/falconer"
 	"github.com/stripe/veneur/ssf"
 	"google.golang.org/grpc"
 )
