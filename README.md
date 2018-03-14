@@ -2,13 +2,13 @@
 
 Falconer is a tracing span collector, buffer and RPC service. It collects and stores spans for a limited amount of time whilst allowing searches of current spans, streaming search of incoming spans and retrieval of entire traces. It would be best paired with [Veneur](https://github.com/stripe/veneur).
 
-![Diagram](https://raw.githubusercontent.com/gphat/falconer/master/diagram.png)
+![Diagram](https://raw.githubusercontent.com/stripe/falconer/master/diagram.png)
 
 Falconer provides an unsampled, shared-nothing, horizontally scalable cluster wherein millions of spans per second may be written and searched. In other words, throw millions of spans at it and let it keep them *all* around for a configurable amount of time. Run more boxes to keep more spans and/or more time.
 
 For example if you emit 100K spans/sec averaging 2K per span, run a dozen or so instances of Falconer, each keeping a dozen or so GB of spans per instance[0]. Now you can recall any given span for the last 15M. You pick the amount you want based in # of spans `a`, size of spans `b` and retention period `c`: `a * b * c / number of instances = per instance memory required`.
 
-0 - Note that there's likely a lot of wasted memory overhead here and it will likely OOM or grow ridiculously until it is optimized with both improved data structures and better tuning knobs. See [Shortcomings](https://github.com/gphat/falconer#shortcomings) below!
+0 - Note that there's likely a lot of wasted memory overhead here and it will likely OOM or grow ridiculously until it is optimized with both improved data structures and better tuning knobs. See [Shortcomings](https://github.com/stripe/falconer#shortcomings) below!
 
 # Features
 
@@ -37,7 +37,7 @@ Localhost to localhost testing shows on a modern Macbook Pro shows:
 
 # API and Usage
 
-Falconer uses [SSF](https://github.com/stripe/veneur/tree/master/ssf) as it's span representation. Clients may write and read from it using [gRPC](https://github.com/gphat/falconer/blob/master/falconer.proto).
+Falconer uses [SSF](https://github.com/stripe/veneur/tree/master/ssf) as it's span representation. Clients may write and read from it using [gRPC](https://github.com/stripe/falconer/blob/master/falconer.proto).
 
 # Future Direction
 

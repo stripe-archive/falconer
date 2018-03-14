@@ -28,10 +28,11 @@ type Worker struct {
 	// Intentionally not using pointers because of https://github.com/golang/go/issues/9477
 	// which implies maps without pointers are less GC-fussy since we don't have
 	// traverse the pointer
-	Items              map[int64]Item
-	Watches            map[string]*Watch
-	mutex              sync.Mutex
+	Items   map[int64]Item
+	Watches map[string]*Watch
+	// protects only Watches
 	watchMutex         sync.Mutex
+	mutex              sync.Mutex
 	expirationDuration time.Duration
 	log                *logrus.Logger
 }
@@ -87,6 +88,7 @@ func (w *Worker) WatchWork() {
 	for {
 		select {
 		case span := <-w.WatchChan:
+			w.watchMutex.Lock()
 			for _, watch := range w.Watches {
 				for tagKey, tagValue := range watch.Tags {
 					if val, ok := span.Tags[tagKey]; ok {
@@ -97,6 +99,7 @@ func (w *Worker) WatchWork() {
 					}
 				}
 			}
+			w.watchMutex.Unlock()
 		}
 	}
 }
@@ -143,6 +146,8 @@ func (w *Worker) RemoveWatch(name string) {
 // GetTrace returns all spans with the specified trace id.
 func (w *Worker) GetTrace(id int64) []*ssf.SSFSpan {
 	var spans []*ssf.SSFSpan
+	w.mutex.Lock()
+	defer w.mutex.Unlock()
 	for _, item := range w.Items {
 		if item.span.TraceId == id {
 			spans = append(spans, item.span)
@@ -154,6 +159,7 @@ func (w *Worker) GetTrace(id int64) []*ssf.SSFSpan {
 // FindSpans returns all spans matching the specified tags to the channel provided.
 func (w *Worker) FindSpans(tags map[string]string, resultChan chan []*ssf.SSFSpan) {
 	var foundSpans []*ssf.SSFSpan
+	w.mutex.Lock()
 	for _, item := range w.Items {
 		span := item.span
 		for fk, fv := range tags {
@@ -165,6 +171,7 @@ func (w *Worker) FindSpans(tags map[string]string, resultChan chan []*ssf.SSFSpa
 			}
 		}
 	}
+	w.mutex.Unlock()
 
 	resultChan <- foundSpans
 }
@@ -177,7 +184,9 @@ func (w *Worker) Sweep(expireTime int64) {
 	expired := 0
 	for key, item := range w.Items {
 		if item.expiration <= expireTime {
+			w.watchMutex.Lock()
 			delete(w.Items, key)
+			w.watchMutex.Unlock()
 			expired++
 		}
 	}

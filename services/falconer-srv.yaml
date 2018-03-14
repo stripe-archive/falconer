@@ -1,0 +1,1 @@
+cmd: bin/falconer -f /pay/conf/falconer.yaml

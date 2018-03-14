@@ -8,7 +8,7 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/gphat/falconer"
+	"github.com/stripe/falconer"
 	"google.golang.org/grpc"
 )
 

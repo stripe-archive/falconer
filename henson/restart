@@ -1,0 +1,4 @@
+#!/bin/bash
+
+# This is a stripe-internal script used during our deploy process. Please ignore!
+svc -h /etc/service/falconer-srv

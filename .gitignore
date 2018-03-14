@@ -1,7 +1,9 @@
-vendor
 /falconer
 /cmd/falconer/falconer
 /client
 /cmd/client/client
 /getter
 /cmd/getter/getter
+*.swp
+*.swo
+*.swn

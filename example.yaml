@@ -14,7 +14,7 @@ listen_address: "localhost:3000"
 worker_span_depth: 1000
 
 # The number of spans for the buffered channel used to pass incoming spans from
-# a worker to it's watchers.
+# a worker to its watchers.
 worker_watch_depth: 1000
 
 # How long spans should stick around before expiring.
