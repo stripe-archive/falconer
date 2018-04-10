@@ -33,7 +33,8 @@ RUN git reset --hard HEAD && git status
 # used to build protoc-gen-go
 RUN go generate
 RUN dep ensure -v
-RUN gofmt -w .
+# Exclude vendor from gofmt checks.
+RUN mv vendor ../ && gofmt -w . && mv ../vendor .
 
 # Stage any changes caused by go generate and gofmt,
 # then confirm that there are no staged changes.
