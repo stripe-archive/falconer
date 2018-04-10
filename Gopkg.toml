@@ -19,6 +19,11 @@
 # [[override]]
 #  name = "github.com/x/y"
 #  version = "2.4.0"
+
+[[constraint]]
+  name = "google.golang.org/grpc"
+  version = "v1.10.0"
+
 [prune]
   go-tests = true
   unused-packages = true

@@ -104,11 +104,13 @@
   packages = [
     ".",
     "balancer",
+    "balancer/base",
     "balancer/roundrobin",
     "codes",
     "connectivity",
     "credentials",
     "encoding",
+    "encoding/proto",
     "grpclb/grpc_lb_v1/messages",
     "grpclog",
     "internal",
@@ -124,8 +126,8 @@
     "tap",
     "transport"
   ]
-  revision = "e687fa4e6424368ece6e4fe727cea2c806a0fcb4"
-  version = "v1.8.2"
+  revision = "d89cded64628466c4ab532d1f0ba5c220459ebe8"
+  version = "v1.11.2"
 
 [[projects]]
   branch = "v2"
