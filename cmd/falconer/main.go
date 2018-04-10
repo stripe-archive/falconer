@@ -44,6 +44,7 @@ func main() {
 	}
 
 	falconer.RegisterFalconerServer(grpcServer, falconerServer)
+	sinks.RegisterSpanSinkServer(grpcServer, falconerServer)
 	log.Debug("Falconer started")
 	grpcServer.Serve(lis)
 }

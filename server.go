@@ -1,17 +1,20 @@
 package falconer
 
 import (
-	"io"
+	"sync/atomic"
 	"time"
 
 	"github.com/sirupsen/logrus"
+	"github.com/stripe/veneur/sinks/grpsink"
 	"github.com/stripe/veneur/ssf"
+	context "golang.org/x/net/context"
 )
 
 type Server struct {
 	log         *logrus.Logger
 	workerCount int64
 	workers     []*Worker
+	spanCount   uint64
 }
 
 func NewServer(log *logrus.Logger, config *Config) (*Server, error) {
@@ -33,9 +36,8 @@ func NewServer(log *logrus.Logger, config *Config) (*Server, error) {
 }
 
 func (s *Server) DispatchSpan(span *ssf.SSFSpan) {
-	spanChan := s.workers[span.TraceId%s.workerCount].SpanChan
 	select {
-	case spanChan <- span:
+	case s.workers[span.TraceId%s.workerCount].SpanChan <- span:
 	default:
 		// TODO This means the worker channel buffer is full. Do something about
 		// this.
@@ -43,30 +45,10 @@ func (s *Server) DispatchSpan(span *ssf.SSFSpan) {
 	}
 }
 
-func (s *Server) SendSpans(stream Falconer_SendSpansServer) error {
-	count := 0
-	start := time.Now()
-	for {
-		batch, err := stream.Recv()
-		if err == io.EOF {
-			d := time.Since(start)
-			s.log.WithFields(logrus.Fields{
-				"spans_received":           count,
-				"duration_seconds":         d.Seconds(),
-				"spans_written_per_second": float64(count) / d.Seconds(),
-			}).Debug("Send spans completed")
-			return stream.SendMsg(&SpanResponse{
-				Greeting: "fart",
-			})
-		}
-		if err != nil {
-			return err
-		}
-		for _, span := range batch.Spans {
-			s.DispatchSpan(span)
-		}
-		count = count + len(batch.Spans)
-	}
+func (s *Server) SendSpan(ctx context.Context, span *ssf.SSFSpan) (*grpsink.Empty, error) {
+	s.DispatchSpan(span)
+	atomic.AddUint64(&s.spanCount, 1)
+	return &grpsink.Empty{}, nil
 }
 
 func (s *Server) GetTrace(req *TraceRequest, stream Falconer_GetTraceServer) error {

@@ -4,9 +4,6 @@ package falconer;
 import "github.com/stripe/veneur/ssf/sample.proto";
 
 service Falconer {
-
-  rpc SendSpans(stream SpanBatch) returns (SpanResponse) {}
-
   rpc FindSpans(FindSpanRequest) returns (stream ssf.SSFSpan) {}
 
   rpc GetTrace(TraceRequest) returns (stream ssf.SSFSpan) {}
