@@ -6,6 +6,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"github.com/stripe/falconer"
+	"github.com/stripe/veneur/sinks/grpsink"
 
 	"google.golang.org/grpc"
 )
@@ -44,6 +45,7 @@ func main() {
 	}
 
 	falconer.RegisterFalconerServer(grpcServer, falconerServer)
+	grpsink.RegisterSpanSinkServer(grpcServer, falconerServer)
 	log.Debug("Falconer started")
 	grpcServer.Serve(lis)
 }

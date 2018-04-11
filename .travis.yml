@@ -36,10 +36,7 @@ before_script:
   - git checkout falconer.pb.go
   - dep ensure -v
 
-  # We need to use gofmt built with 1.9+
-  # on *all* builds
-  # because some vendored files use type alias syntax
-  - /usr/bin/gofmt -w .
+  - mv vendor ../ && gofmt -w . && mv ../vendor .
 
   # See the corresponding lines in the Dockerfile for an explanation
   # of this logic

@@ -107,12 +107,13 @@ func (w *Worker) WatchWork() {
 // AddSpan adds the span to this worker.
 func (w *Worker) AddSpan(span *ssf.SSFSpan) {
 	w.mutex.Lock()
-	defer w.mutex.Unlock()
 
 	w.Items[span.Id] = Item{
 		span:       span,
 		expiration: time.Now().Add(w.expirationDuration).Unix(),
 	}
+
+	w.mutex.Unlock()
 
 	if len(w.Watches) > 0 {
 		select {
@@ -121,6 +122,7 @@ func (w *Worker) AddSpan(span *ssf.SSFSpan) {
 			w.log.Warn("Failed to write watched span")
 		}
 	}
+
 }
 
 // AddWatch adds a watch with the given name and configures it to return matches
