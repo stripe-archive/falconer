@@ -100,7 +100,14 @@ func TestWorkerSweep(t *testing.T) {
 
 	w.Sweep(then.Unix())
 
-	assert.Equal(t, 0, len(w.Items))
+	var itemCount int
+
+	w.Items.Range(func(_, _ interface{}) bool {
+		itemCount++
+		return true
+	})
+
+	assert.Equal(t, 0, itemCount)
 }
 
 func TestWorkerWatches(t *testing.T) {
