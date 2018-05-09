@@ -24,6 +24,10 @@
   name = "google.golang.org/grpc"
   version = "v1.10.0"
 
+[[constraint]]
+  name = "github.com/stripe/veneur"
+  branch = "master"
+
 [prune]
   go-tests = true
   unused-packages = true

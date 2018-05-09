@@ -2,8 +2,21 @@ package ssf
 
 import (
 	"math/rand"
+	"sync"
 	"time"
 )
+
+var rngPool = sync.Pool{
+	New: func() interface{} {
+		return rand.New(rand.NewSource(rand.Int63()))
+	},
+}
+
+// defaultRandFloat32 returns a random float32
+// using the default math/rand source
+func defaultRandFloat32() float32 {
+	return rand.Float32()
+}
 
 // Samples is a batch of SSFSamples, not attached to an SSF span, that
 // can be submitted with package metrics's Report function.
@@ -102,8 +115,16 @@ func create(base *SSFSample, opts []SampleOption) *SSFSample {
 func RandomlySample(rate float32, samples ...*SSFSample) []*SSFSample {
 	res := make([]*SSFSample, 0, len(samples))
 
+	randFloat := defaultRandFloat32
+
+	r, ok := rngPool.Get().(*rand.Rand)
+	if ok {
+		randFloat = r.Float32
+		defer rngPool.Put(r)
+	}
+
 	for _, s := range samples {
-		if rand.Float32() <= rate {
+		if randFloat() <= rate {
 			if rate > 0 && rate <= 1 {
 				s.SampleRate = s.SampleRate * rate
 			}
@@ -169,4 +190,16 @@ func Set(name string, value string, tags map[string]string, opts ...SampleOption
 func Timing(name string, value time.Duration, resolution time.Duration, tags map[string]string, opts ...SampleOption) *SSFSample {
 	time := float32(value / resolution)
 	return Histogram(name, time, tags, append(opts, TimeUnit(resolution))...)
+}
+
+// Status returns an SSFSample capturing the reported state
+// of a service
+func Status(name string, state SSFSample_Status, tags map[string]string, opts ...SampleOption) *SSFSample {
+	return create(&SSFSample{
+		Metric:     SSFSample_STATUS,
+		Name:       name,
+		Status:     state,
+		Tags:       tags,
+		SampleRate: 1.0,
+	}, opts)
 }

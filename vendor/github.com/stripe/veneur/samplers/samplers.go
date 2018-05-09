@@ -21,6 +21,8 @@ const (
 	CounterMetric MetricType = iota
 	// GaugeMetric is a gauge
 	GaugeMetric
+	// StatusMetric is a status (synonymous with a service check)
+	StatusMetric
 )
 
 // RouteInformation is a key-only map indicating sink names that are
@@ -48,6 +50,8 @@ type InterMetric struct {
 	Value     float64
 	Tags      []string
 	Type      MetricType
+	Message   string
+	HostName  string
 
 	// Sinks, if non-nil, indicates which metric sinks a metric
 	// should be inserted into. If nil, that means the metric is
@@ -211,6 +215,7 @@ func (g *Gauge) Flush() []InterMetric {
 		Type:      GaugeMetric,
 		Sinks:     routeInfo(tags),
 	}}
+
 }
 
 // Export converts a Gauge into a JSONMetric.
@@ -248,9 +253,69 @@ func (g *Gauge) Combine(other []byte) error {
 	return nil
 }
 
-// NewGauge genearaaaa who am I kidding just getting rid of the warning.
+// NewGauge generates an empty (valueless) Gauge
 func NewGauge(Name string, Tags []string) *Gauge {
 	return &Gauge{Name: Name, Tags: Tags}
+}
+
+// StatusCheck retains whatever the last value was.
+type StatusCheck struct {
+	InterMetric
+}
+
+// Sample takes on whatever value is passed in as a sample.
+func (s *StatusCheck) Sample(sample float64, sampleRate float32, message string, hostname string) {
+	s.Value = sample
+	s.Message = message
+	s.HostName = hostname
+}
+
+// Flush generates an InterMetric from the current state of this status check.
+func (s *StatusCheck) Flush() []InterMetric {
+	s.Timestamp = time.Now().Unix()
+	s.Type = StatusMetric
+	s.Sinks = routeInfo(s.Tags)
+	return []InterMetric{s.InterMetric}
+}
+
+// Export converts a StatusCheck into a JSONMetric.
+func (s *StatusCheck) Export() (JSONMetric, error) {
+	var buf bytes.Buffer
+
+	err := binary.Write(&buf, binary.LittleEndian, s.Value)
+	if err != nil {
+		return JSONMetric{}, err
+	}
+
+	return JSONMetric{
+		MetricKey: MetricKey{
+			Name:       s.Name,
+			Type:       "status",
+			JoinedTags: strings.Join(s.Tags, ","),
+		},
+		Tags:  s.Tags,
+		Value: buf.Bytes(),
+	}, nil
+}
+
+// Combine is pretty naïve for StatusChecks, as it just overwrites the value.
+func (s *StatusCheck) Combine(other []byte) error {
+	var otherValue float64
+	buf := bytes.NewReader(other)
+	err := binary.Read(buf, binary.LittleEndian, &otherValue)
+
+	if err != nil {
+		return err
+	}
+
+	s.Value = otherValue
+
+	return nil
+}
+
+// NewStatusCheck generates an empty (valueless) StatusCheck
+func NewStatusCheck(Name string, Tags []string) *StatusCheck {
+	return &StatusCheck{InterMetric{Name: Name, Tags: Tags}}
 }
 
 // Set is a list of unique values seen.
