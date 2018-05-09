@@ -68,6 +68,12 @@
   version = "v1.0.0"
 
 [[projects]]
+  branch = "master"
+  name = "github.com/segmentio/fasthash"
+  packages = ["fnv1a"]
+  revision = "a72b379d632eab4b49e4f4b2c765cfebf0a74796"
+
+[[projects]]
   name = "github.com/sirupsen/logrus"
   packages = ["."]
   revision = "89742aefa4b206dcf400792f3bd35b542998eb3b"
@@ -96,7 +102,7 @@
     "trace",
     "trace/metrics"
   ]
-  revision = "24a8c8b76a6677f5fb434db824db298a3ecb205d"
+  revision = "edf9e9d09772a90898abee0426bc1358c3886f8f"
 
 [[projects]]
   branch = "master"
@@ -193,6 +199,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "27c8580d1a064ef9590de86d5bc56ef9ebf0e09a1e3c8fff072084f50ab13aea"
+  inputs-digest = "34e8c78cd28130087e30cf0e5273c65bd07c8926db5ecb4f7b6a5e4d66ab6440"
   solver-name = "gps-cdcl"
   solver-version = 1

@@ -25,14 +25,11 @@ type Worker struct {
 	SpanChan  chan *ssf.SSFSpan
 	WatchChan chan *ssf.SSFSpan
 	QuitChan  chan struct{}
-	// Intentionally not using pointers because of https://github.com/golang/go/issues/9477
-	// which implies maps without pointers are less GC-fussy since we don't have
-	// traverse the pointer
-	Items   map[int64]Item
+	// Using sync.Map because it matches our workload - write-once, read-many.
+	Items   *sync.Map
 	Watches map[string]*Watch
 	// protects only Watches
 	watchMutex         sync.Mutex
-	mutex              sync.Mutex
 	expirationDuration time.Duration
 	log                *logrus.Logger
 }
@@ -47,9 +44,8 @@ func NewWorker(log *logrus.Logger, spanDepth int, watchDepth int, expirationDura
 		SpanChan:           make(chan *ssf.SSFSpan, spanDepth),
 		WatchChan:          make(chan *ssf.SSFSpan, watchDepth),
 		QuitChan:           make(chan struct{}),
-		Items:              make(map[int64]Item),
+		Items:              &sync.Map{},
 		Watches:            make(map[string]*Watch),
-		mutex:              sync.Mutex{},
 		watchMutex:         sync.Mutex{},
 		expirationDuration: expirationDuration,
 		log:                log,
@@ -106,14 +102,14 @@ func (w *Worker) WatchWork() {
 
 // AddSpan adds the span to this worker.
 func (w *Worker) AddSpan(span *ssf.SSFSpan) {
-	w.mutex.Lock()
-
-	w.Items[span.Id] = Item{
+	_, dup := w.Items.LoadOrStore(span.Id, Item{
 		span:       span,
 		expiration: time.Now().Add(w.expirationDuration).Unix(),
-	}
+	})
 
-	w.mutex.Unlock()
+	if dup {
+		w.log.WithField("span-id", span.Id).Warn("Collision on span, discarding new span")
+	}
 
 	if len(w.Watches) > 0 {
 		select {
@@ -122,7 +118,6 @@ func (w *Worker) AddSpan(span *ssf.SSFSpan) {
 			w.log.Warn("Failed to write watched span")
 		}
 	}
-
 }
 
 // AddWatch adds a watch with the given name and configures it to return matches
@@ -148,22 +143,25 @@ func (w *Worker) RemoveWatch(name string) {
 // GetTrace returns all spans with the specified trace id.
 func (w *Worker) GetTrace(id int64) []*ssf.SSFSpan {
 	var spans []*ssf.SSFSpan
-	w.mutex.Lock()
-	defer w.mutex.Unlock()
-	for _, item := range w.Items {
+
+	w.Items.Range(func(_, v interface{}) bool {
+		item := v.(Item)
 		if item.span.TraceId == id {
 			spans = append(spans, item.span)
 		}
-	}
+
+		return true
+	})
+
 	return spans
 }
 
 // FindSpans returns all spans matching the specified tags to the channel provided.
 func (w *Worker) FindSpans(tags map[string]string, resultChan chan []*ssf.SSFSpan) {
 	var foundSpans []*ssf.SSFSpan
-	w.mutex.Lock()
-	for _, item := range w.Items {
-		span := item.span
+
+	w.Items.Range(func(_, v interface{}) bool {
+		span := v.(Item).span
 		for fk, fv := range tags {
 			if v, ok := span.Tags[fk]; ok {
 				if v == fv {
@@ -172,25 +170,29 @@ func (w *Worker) FindSpans(tags map[string]string, resultChan chan []*ssf.SSFSpa
 				}
 			}
 		}
-	}
-	w.mutex.Unlock()
+
+		return true
+	})
 
 	resultChan <- foundSpans
 }
 
-// Sweep deletes any expired spans. The provided time is used for comparisong to
+// Sweep deletes any expired spans. The provided time is used for comparison to
 // facilitate testing.
 func (w *Worker) Sweep(expireTime int64) {
-	w.mutex.Lock()
-	defer w.mutex.Unlock()
 	expired := 0
-	for key, item := range w.Items {
+	w.Items.Range(func(k, v interface{}) bool {
+		item := v.(Item)
+
 		if item.expiration <= expireTime {
 			w.watchMutex.Lock()
-			delete(w.Items, key)
+			w.Items.Delete(k.(int64))
 			w.watchMutex.Unlock()
 			expired++
 		}
-	}
+
+		return true
+	})
+
 	w.log.WithField("expired_count", expired).Debug("Expired spans")
 }

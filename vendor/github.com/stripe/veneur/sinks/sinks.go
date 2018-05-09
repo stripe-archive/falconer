@@ -18,6 +18,15 @@ const MetricKeyMetricFlushDuration = "sink.metric_flush_total_duration_ns"
 // place to do this.
 const MetricKeyTotalMetricsFlushed = "sink.metrics_flushed_total"
 
+// MetricKeyTotalMetricsSkipped should be emitted as a counter by a MetricSink
+// if possible. Tagged with `sink:sink.Name()`. Track the number of metrics
+// skipped, not applicable to this MetricSink.
+const MetricKeyTotalMetricsSkipped = "sink.metrics_skipped_total"
+
+// EventReportedCount number of events processed by a sink. Tagged with
+// `sink:sink.Name()`.
+const EventReportedCount = "sink.events_reported_total"
+
 // MetricSink is a receiver of `InterMetric`s when Veneur periodically flushes
 // it's aggregated metrics.
 type MetricSink interface {

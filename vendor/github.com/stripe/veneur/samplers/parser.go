@@ -4,13 +4,13 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"hash/fnv"
 	"math"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/segmentio/fasthash/fnv1a"
 	"github.com/stripe/veneur/protocol/dogstatsd"
 	"github.com/stripe/veneur/samplers/metricpb"
 	"github.com/stripe/veneur/ssf"
@@ -27,6 +27,9 @@ type UDPMetric struct {
 	SampleRate float32
 	Tags       []string
 	Scope      MetricScope
+	Timestamp  int64
+	Message    string
+	HostName   string
 }
 
 type MetricScope int
@@ -132,7 +135,7 @@ func ConvertSpanUniquenessMetrics(span *ssf.SSFSpan, rate float32) ([]UDPMetric,
 				"service":   span.Service,
 				"root_span": strconv.FormatBool(span.Id == span.TraceId),
 			}))...)
-	metrics := []UDPMetric{}
+	metrics := make([]UDPMetric, 0, len(ssfMetrics))
 	for _, m := range ssfMetrics {
 		udpM, err := ParseMetricSSF(m)
 		if err != nil {
@@ -176,8 +179,8 @@ func ParseMetricSSF(metric *ssf.SSFSample) (UDPMetric, error) {
 	ret := UDPMetric{
 		SampleRate: 1.0,
 	}
-	h := fnv.New32a()
-	h.Write([]byte(metric.Name))
+	h := fnv1a.Init32
+	h = fnv1a.AddString32(h, metric.Name)
 	ret.Name = metric.Name
 	switch metric.Metric {
 	case ssf.SSFSample_COUNTER:
@@ -188,17 +191,22 @@ func ParseMetricSSF(metric *ssf.SSFSample) (UDPMetric, error) {
 		ret.Type = "histogram"
 	case ssf.SSFSample_SET:
 		ret.Type = "set"
+	case ssf.SSFSample_STATUS:
+		ret.Type = "status"
 	default:
 		return UDPMetric{}, invalidMetricTypeError
 	}
-	h.Write([]byte(ret.Type))
-	if metric.Metric == ssf.SSFSample_SET {
+	h = fnv1a.AddString32(h, ret.Type)
+	switch metric.Metric {
+	case ssf.SSFSample_SET:
 		ret.Value = metric.Message
-	} else {
+	case ssf.SSFSample_STATUS:
+		ret.Value = metric.Status
+	default:
 		ret.Value = float64(metric.Value)
 	}
 	ret.SampleRate = metric.SampleRate
-	tempTags := make([]string, 0)
+	tempTags := make([]string, 0, len(metric.Tags))
 	for key, value := range metric.Tags {
 		if key == "veneurlocalonly" {
 			ret.Scope = LocalOnly
@@ -208,13 +216,13 @@ func ParseMetricSSF(metric *ssf.SSFSample) (UDPMetric, error) {
 			ret.Scope = GlobalOnly
 			continue
 		}
-		tempTags = append(tempTags, fmt.Sprintf("%s:%s", key, value))
+		tempTags = append(tempTags, key+":"+value)
 	}
 	sort.Strings(tempTags)
 	ret.Tags = tempTags
 	ret.JoinedTags = strings.Join(tempTags, ",")
-	h.Write([]byte(ret.JoinedTags))
-	ret.Digest = h.Sum32()
+	h = fnv1a.AddString32(h, ret.JoinedTags)
+	ret.Digest = h
 	return ret, nil
 }
 
@@ -247,9 +255,10 @@ func ParseMetric(packet []byte) (*UDPMetric, error) {
 		return nil, errors.New("Invalid metric packet, metric type not specified")
 	}
 
-	h := fnv.New32a()
-	h.Write(nameChunk)
+	h := fnv1a.Init32
+
 	ret.Name = string(nameChunk)
+	h = fnv1a.AddString32(h, ret.Name)
 
 	// Decide on a type
 	switch typeChunk[0] {
@@ -267,7 +276,7 @@ func ParseMetric(packet []byte) (*UDPMetric, error) {
 		return nil, invalidMetricTypeError
 	}
 	// Add the type to the digest
-	h.Write([]byte(ret.Type))
+	h = fnv1a.AddString32(h, ret.Type)
 
 	// Now convert the metric's value
 	if ret.Type == "set" {
@@ -310,6 +319,9 @@ func ParseMetric(packet []byte) (*UDPMetric, error) {
 			if ret.Tags != nil {
 				return nil, errors.New("Invalid metric packet, multiple tag sections specified")
 			}
+			// should we be filtering known key tags from here?
+			// in order to prevent extremely high cardinality in the global stats?
+			// see worker.go line 273
 			tags := strings.Split(string(pipeSplitter.Chunk()[1:]), ",")
 			sort.Strings(tags)
 			for i, tag := range tags {
@@ -331,14 +343,14 @@ func ParseMetric(packet []byte) (*UDPMetric, error) {
 			// we specifically need the sorted version here so that hashing over
 			// tags behaves deterministically
 			ret.JoinedTags = strings.Join(tags, ",")
-			h.Write([]byte(ret.JoinedTags))
+			h = fnv1a.AddString32(h, ret.JoinedTags)
 
 		default:
 			return nil, fmt.Errorf("Invalid metric packet, contains unknown section %q", pipeSplitter.Chunk())
 		}
 	}
 
-	ret.Digest = h.Sum32()
+	ret.Digest = h
 
 	return ret, nil
 }
@@ -493,19 +505,17 @@ func ParseEvent(packet []byte) (*ssf.SSFSample, error) {
 	return ret, nil
 }
 
-// ParseServiceCheck parses a packet that represents a Datadog service check and
-// returns an SSFSample or an error on failure. To facilitate the many Datadog
-// -specific values that are present in a DogStatsD service check but not in an
-// SSF sample, a series of special tags are set as defined in
-// protocol/dogstatsd/protocol.go. Any sink that wants to consume these service
-// checks will then need to implement FlushOtherSamples and unwind these special
-// tags into whatever is appropriate for that sink.
-func ParseServiceCheck(packet []byte) (*ssf.SSFSample, error) {
-
-	ret := &ssf.SSFSample{
-		Timestamp: time.Now().Unix(),
-		Tags:      map[string]string{dogstatsd.CheckIdentifierKey: ""},
+// ParseServiceCheck parses a packet that represents a service status check and
+// returns a UDPMetric or an error on failure. The UDPMetric struct has explicit
+// fields for each value of a service status check and does not require
+// overloading magical tags for conversion.
+func ParseServiceCheck(packet []byte) (*UDPMetric, error) {
+	ret := &UDPMetric{
+		SampleRate: 1.0,
+		Timestamp:  time.Now().Unix(),
+		Tags:       []string{},
 	}
+	ret.Type = "status"
 
 	pipeSplitter := NewSplitBytes(packet, '|')
 	pipeSplitter.Next()
@@ -527,13 +537,13 @@ func ParseServiceCheck(packet []byte) (*ssf.SSFSample, error) {
 	}
 	switch {
 	case bytes.Equal(pipeSplitter.Chunk(), []byte{'0'}):
-		ret.Status = ssf.SSFSample_OK
+		ret.Value = ssf.SSFSample_OK
 	case bytes.Equal(pipeSplitter.Chunk(), []byte{'1'}):
-		ret.Status = ssf.SSFSample_WARNING
+		ret.Value = ssf.SSFSample_WARNING
 	case bytes.Equal(pipeSplitter.Chunk(), []byte{'2'}):
-		ret.Status = ssf.SSFSample_CRITICAL
+		ret.Value = ssf.SSFSample_CRITICAL
 	case bytes.Equal(pipeSplitter.Chunk(), []byte{'3'}):
-		ret.Status = ssf.SSFSample_UNKNOWN
+		ret.Value = ssf.SSFSample_UNKNOWN
 	default:
 		return nil, errors.New("Invalid service check packet, must have status of 0, 1, 2, or 3")
 	}
@@ -567,7 +577,7 @@ func ParseServiceCheck(packet []byte) (*ssf.SSFSample, error) {
 			if foundHostname || foundMessage {
 				return nil, errors.New("Invalid service check packet, multiple hostname sections")
 			}
-			ret.Tags[dogstatsd.CheckHostnameTagKey] = string(pipeSplitter.Chunk()[2:])
+			ret.HostName = string(pipeSplitter.Chunk()[2:])
 			foundHostname = true
 		case bytes.HasPrefix(pipeSplitter.Chunk(), []byte{'m', ':'}):
 			// this section must come last, so its flag also gets checked by
@@ -582,16 +592,34 @@ func ParseServiceCheck(packet []byte) (*ssf.SSFSample, error) {
 				return nil, errors.New("Invalid service chack packet, multiple tag sections")
 			}
 			tags := strings.Split(string(pipeSplitter.Chunk()[1:]), ",")
-			mappedTags := ParseTagSliceToMap(tags)
-			// We've already added some tags, so we'll just add these to the ones we've got.
-			for k, v := range mappedTags {
-				ret.Tags[k] = v
+			sort.Strings(tags)
+			for i, tag := range tags {
+				// we use this tag as an escape hatch for metrics that always
+				// want to be host-local
+				if tag == "veneurlocalonly" {
+					// delete the tag from the list
+					tags = append(tags[:i], tags[i+1:]...)
+					ret.Scope = LocalOnly
+					break
+				} else if tag == "veneurglobalonly" {
+					// delete the tag from the list
+					tags = append(tags[:i], tags[i+1:]...)
+					ret.Scope = GlobalOnly
+					break
+				}
 			}
+			ret.Tags = tags
 			foundTags = true
 		default:
 			return nil, errors.New("Invalid service check packet, unrecognized metadata section")
 		}
 	}
+	h := fnv1a.Init32
+	h = fnv1a.AddString32(h, ret.Name)
+	h = fnv1a.AddString32(h, ret.Type)
+	ret.JoinedTags = strings.Join(ret.Tags, ",")
+	h = fnv1a.AddString32(h, ret.JoinedTags)
+	ret.Digest = h
 
 	return ret, nil
 }
