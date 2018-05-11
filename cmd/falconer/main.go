@@ -3,12 +3,14 @@ package main
 import (
 	"flag"
 	"net"
+	"time"
 
 	"github.com/sirupsen/logrus"
 	"github.com/stripe/falconer"
 	"github.com/stripe/veneur/sinks/grpsink"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/keepalive"
 )
 
 var (
@@ -32,20 +34,36 @@ func main() {
 		log.SetLevel(logrus.DebugLevel)
 	}
 
-	lis, err := net.Listen("tcp", config.ListenAddress)
+	maxage, err := time.ParseDuration(config.SendSpanConnectionMaxAge)
 	if err != nil {
-		log.WithError(err).Fatal("Failed to listen")
+		log.WithError(err).Fatal("Malformed configuration value for send_span_connection_max_age; it must be parseable by time.ParseDuration()")
 	}
-	var opts []grpc.ServerOption
-	grpcServer := grpc.NewServer(opts...)
+
+	qlis, err := net.Listen("tcp", config.QueryAddress)
+	if err != nil {
+		log.WithError(err).Fatal("Failed to listen on query address")
+	}
+	ilis, err := net.Listen("tcp", config.GRPCIngestAddress)
+	if err != nil {
+		log.WithError(err).Fatal("Failed to listen on ingest address")
+	}
+
+	var igrpcServer *grpc.Server
+	if maxage > 0 {
+		igrpcServer = grpc.NewServer(grpc.KeepaliveParams(keepalive.ServerParameters{MaxConnectionAge: maxage}))
+	} else {
+		igrpcServer = grpc.NewServer()
+	}
+	qgrpcServer := grpc.NewServer()
 
 	falconerServer, err := falconer.NewServer(log, &config)
 	if err != nil {
 		log.WithError(err).Fatal("Failed to start server")
 	}
 
-	falconer.RegisterFalconerServer(grpcServer, falconerServer)
-	grpsink.RegisterSpanSinkServer(grpcServer, falconerServer)
+	falconer.RegisterFalconerServer(qgrpcServer, falconerServer)
+	grpsink.RegisterSpanSinkServer(igrpcServer, falconerServer)
 	log.Debug("Falconer started")
-	grpcServer.Serve(lis)
+	go qgrpcServer.Serve(qlis)
+	igrpcServer.Serve(ilis)
 }

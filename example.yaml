@@ -6,8 +6,11 @@ debug: true
 # concurrency but more memory consumed. You can make this a big number though.
 worker_count: 512
 
-# The address on which to listen for gRPC requests
-listen_address: "localhost:3000"
+# The address on which gRPC should listen for read queries.
+query_address: "localhost:3001"
+
+# The address on which gRPC should listen for ingesting spans.
+grpc_ingest_address: "localhost:3000"
 
 # The number of spans for the buffered channel used to communicate with the workers.
 # This allows us to do non-blocking writes at the risk of overflowing the channel.

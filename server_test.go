@@ -25,7 +25,7 @@ func TestSpanIngest(t *testing.T) {
 
 	cfg := Config{
 		Debug:                         true,
-		ListenAddress:                 testaddr,
+		QueryAddress:                  testaddr,
 		SpanExpirationDurationSeconds: "60s",
 		WorkerCount:                   1,
 		WorkerSpanDepth:               1,
