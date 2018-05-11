@@ -19,3 +19,13 @@ worker_watch_depth: 1000
 
 # How long spans should stick around before expiring.
 span_expiration_duration_seconds: "300s"
+
+# How long, in seconds, span-emitting clients should be allowed to maintain a
+# persistent gRPC connection, after which the connection will be closed. This
+# is primarliy for load balancing: it will force the client side to attempt to
+# reconnect, causing it to re-resolve DNS and communicate with any intermediate
+# load balancers.
+#
+# If unset, or set to 0, falconer will never forcibly close connections to span
+# emitter clients.
+send_span_connection_max_age: "300s"
