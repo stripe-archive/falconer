@@ -34,6 +34,9 @@ func main() {
 		log.SetLevel(logrus.DebugLevel)
 	}
 
+	if config.SendSpanConnectionMaxAge == "" {
+		config.SendSpanConnectionMaxAge = "0s"
+	}
 	maxage, err := time.ParseDuration(config.SendSpanConnectionMaxAge)
 	if err != nil {
 		log.WithError(err).Fatal("Malformed configuration value for send_span_connection_max_age; it must be parseable by time.ParseDuration()")
