@@ -43,7 +43,7 @@ func main() {
 	if err != nil {
 		log.WithError(err).Fatal("Failed to listen on query address")
 	}
-	ilis, err := net.Listen("tcp", config.GRPCIngestAddress)
+	ilis, err := net.Listen("tcp", config.GrpcIngestAddress)
 	if err != nil {
 		log.WithError(err).Fatal("Failed to listen on ingest address")
 	}
