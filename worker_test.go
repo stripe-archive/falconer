@@ -10,8 +10,7 @@ import (
 )
 
 func TestWorkerGetTrace(t *testing.T) {
-
-	w := NewWorker(logrus.New(), 10, 10, time.Second+30)
+	w := NewWorker(logrus.New(), dummyTraceClient(), 10, 10, time.Second+30)
 
 	traceID := int64(1235)
 
@@ -39,8 +38,7 @@ func TestWorkerGetTrace(t *testing.T) {
 }
 
 func TestWorkerFindSpans(t *testing.T) {
-
-	w := NewWorker(logrus.New(), 10, 10, time.Second+30)
+	w := NewWorker(logrus.New(), dummyTraceClient(), 10, 10, time.Second+30)
 
 	traceID := int64(1235)
 
@@ -71,9 +69,8 @@ func TestWorkerFindSpans(t *testing.T) {
 }
 
 func TestWorkerSweep(t *testing.T) {
-
 	expirationDuration := time.Second * 30
-	w := NewWorker(logrus.New(), 10, 10, expirationDuration)
+	w := NewWorker(logrus.New(), dummyTraceClient(), 10, 10, expirationDuration)
 
 	traceID := int64(1235)
 
@@ -111,8 +108,7 @@ func TestWorkerSweep(t *testing.T) {
 }
 
 func TestWorkerWatches(t *testing.T) {
-
-	w := NewWorker(logrus.New(), 10, 10, time.Second+30)
+	w := NewWorker(logrus.New(), dummyTraceClient(), 10, 10, time.Second+30)
 
 	resultChan := make(chan *ssf.SSFSpan, 1)
 	w.AddWatch("farts", map[string]string{"foo": "bar"}, resultChan)

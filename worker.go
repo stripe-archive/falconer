@@ -2,10 +2,13 @@ package falconer
 
 import (
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/sirupsen/logrus"
 	"github.com/stripe/veneur/ssf"
+	"github.com/stripe/veneur/trace"
+	"github.com/stripe/veneur/trace/metrics"
 )
 
 // Item is a span with an expiration time.
@@ -32,11 +35,17 @@ type Worker struct {
 	watchMutex         sync.Mutex
 	expirationDuration time.Duration
 	log                *logrus.Logger
+	traceClient        *trace.Client
+	// Count of items in the sync.Map. Kept separately because sync.Map doesn't
+	// have a method for computing this efficiently.
+	itemCount uint64
+	// Number of items expired since last flush.
+	expiredCount uint64
 }
 
 // NewWorker creates a new worker which stores spans, handles queries and expires
 // old spans.
-func NewWorker(log *logrus.Logger, spanDepth int, watchDepth int, expirationDuration time.Duration) *Worker {
+func NewWorker(log *logrus.Logger, trace *trace.Client, spanDepth int, watchDepth int, expirationDuration time.Duration) *Worker {
 	w := &Worker{
 		// We make our incoming span channel buffered so that we can use non-blocking
 		// writes. This improves write speed by >= 50% but risks dropping spans if
@@ -49,6 +58,7 @@ func NewWorker(log *logrus.Logger, spanDepth int, watchDepth int, expirationDura
 		watchMutex:         sync.Mutex{},
 		expirationDuration: expirationDuration,
 		log:                log,
+		traceClient:        trace,
 	}
 	ticker := time.NewTicker(expirationDuration)
 	// Use a ticker to periodically expire spans.
@@ -107,8 +117,10 @@ func (w *Worker) AddSpan(span *ssf.SSFSpan) {
 		expiration: time.Now().Add(w.expirationDuration).Unix(),
 	})
 
+	atomic.AddUint64(&w.itemCount, 1)
+
 	if dup {
-		w.log.WithField("span-id", span.Id).Warn("Collision on span, discarding new span")
+		w.log.WithField("span-id", span.Id).Error("Collision on span, discarding new span")
 	}
 
 	if len(w.Watches) > 0 {
@@ -194,5 +206,6 @@ func (w *Worker) Sweep(expireTime int64) {
 		return true
 	})
 
-	w.log.WithField("expired_count", expired).Debug("Expired spans")
+	atomic.AddUint64(&w.itemCount, ^uint64(expired-1))
+	metrics.ReportOne(w.traceClient, ssf.Count("falconer.ssfspans.expired", float32(expired), nil))
 }
