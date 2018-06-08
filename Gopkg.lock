@@ -8,6 +8,12 @@
   version = "1.1.0"
 
 [[projects]]
+  name = "github.com/VividCortex/ewma"
+  packages = ["."]
+  revision = "b24eb346a94c3ba12c1da1e564dbac1b498a77ce"
+  version = "v1.1.1"
+
+[[projects]]
   name = "github.com/axiomhq/hyperloglog"
   packages = ["."]
   revision = "8300947202c9fbce15a5a299b27c8b0f5092a520"
@@ -199,6 +205,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "34e8c78cd28130087e30cf0e5273c65bd07c8926db5ecb4f7b6a5e4d66ab6440"
+  inputs-digest = "698977b639e42fc28d7ca9c612b66b22256824d2a261b649dcd32ad80285e372"
   solver-name = "gps-cdcl"
   solver-version = 1
