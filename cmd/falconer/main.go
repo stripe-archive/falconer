@@ -7,6 +7,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/stripe/falconer"
 	"github.com/stripe/veneur/sinks/grpsink"
+	"github.com/stripe/veneur/trace"
 
 	"google.golang.org/grpc"
 )
@@ -39,7 +40,18 @@ func main() {
 	var opts []grpc.ServerOption
 	grpcServer := grpc.NewServer(opts...)
 
-	falconerServer, err := falconer.NewServer(log, &config)
+	var client *trace.Client
+	if config.StatsdAddress != "" {
+		client, err = trace.NewClient(config.StatsdAddress)
+		if err != nil {
+			log.WithError(err).WithField("addr", config.StatsdAddress).Fatal("Failed to set up trace client for address")
+		}
+
+		trace.DefaultClient = client
+		trace.Service = "falconer"
+	}
+
+	falconerServer, err := falconer.NewServer(log, client, &config)
 	if err != nil {
 		log.WithError(err).Fatal("Failed to start server")
 	}

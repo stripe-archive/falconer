@@ -47,20 +47,15 @@ type goroutineEWMAs struct {
 	all, sendSpans, watchSpans, findSpans, getTrace ewma.MovingAverage
 }
 
-func NewServer(log *logrus.Logger, config *Config) (*Server, error) {
+func NewServer(log *logrus.Logger, client *trace.Client, config *Config) (*Server, error) {
 	expiration, err := time.ParseDuration(config.SpanExpirationDurationSeconds)
 	if err != nil {
 		return &Server{}, err
 	}
 
-	var client *trace.Client
-	if config.StatsdAddress == "" {
+	if client == nil {
 		client = dummyTraceClient()
-	} else {
-		client, err = trace.NewClient(config.StatsdAddress)
-		if err != nil {
-			return &Server{}, err
-		}
+		log.Debug("using dummy metrics client, all metrics are blackholed")
 	}
 
 	workers := make([]*Worker, config.WorkerCount)
@@ -125,49 +120,56 @@ func (s *Server) Flush() {
 		totalItems += atomic.LoadUint64(&worker.itemCount)
 	}
 
+	s.log.Debug("flushing metrics")
+
 	samples.Add(
 		ssf.Count(
-			"falconer.ssfspans.received",
+			"ssfspans.received",
 			float32(atomic.SwapUint64(&s.receivedCount, 0)),
 			nil,
 		),
 		ssf.Gauge(
-			"falconer.ssfspans.current",
+			"ssfspans.current",
 			float32(totalItems),
 			nil,
 		),
 		ssf.Gauge(
-			"falconer.goroutines.all",
+			"goroutines.all",
 			float32(s.grEWMA.all.Value()),
 			nil,
 		),
 		ssf.Gauge(
-			"falconer.goroutines.grpc",
+			"goroutines.grpc",
 			float32(s.grEWMA.sendSpans.Value()),
 			map[string]string{"rpcname": "sendSpans"},
 		),
 		ssf.Gauge(
-			"falconer.goroutines.grpc",
+			"goroutines.grpc",
 			float32(s.grEWMA.watchSpans.Value()),
 			map[string]string{"rpcname": "watchSpans"},
 		),
 		ssf.Gauge(
-			"falconer.goroutines.grpc",
+			"goroutines.grpc",
 			float32(s.grEWMA.findSpans.Value()),
 			map[string]string{"rpcname": "findSpans"},
 		),
 		ssf.Gauge(
-			"falconer.goroutines.grpc",
+			"goroutines.grpc",
 			float32(s.grEWMA.getTrace.Value()),
 			map[string]string{"rpcname": "getTrace"},
 		),
 	)
 
-	metrics.Report(s.traceClient, samples)
+	err := metrics.Report(s.traceClient, samples)
+	if err != nil {
+		s.log.WithError(err).Error("failed to send metrics")
+	}
 	return
 }
 
 func (s *Server) assessGoroutines() {
+
+	s.log.Debug("assessing goroutines")
 	s.grEWMA.all.Add(float64(runtime.NumGoroutine()))
 	s.grEWMA.sendSpans.Add(float64(atomic.LoadUint32(s.grCounts.sendSpans)))
 	s.grEWMA.watchSpans.Add(float64(atomic.LoadUint32(s.grCounts.watchSpans)))

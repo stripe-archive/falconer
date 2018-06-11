@@ -33,7 +33,7 @@ func TestSpanIngest(t *testing.T) {
 	}
 
 	log := logrus.New()
-	falconerServer, err := NewServer(log, &cfg)
+	falconerServer, err := NewServer(log, dummyTraceClient(), &cfg)
 	if err != nil {
 		log.WithError(err).Fatal("Failed to create server")
 	}
