@@ -207,5 +207,5 @@ func (w *Worker) Sweep(expireTime int64) {
 	})
 
 	atomic.AddUint64(&w.itemCount, ^uint64(expired-1))
-	metrics.ReportOne(w.traceClient, ssf.Count("falconer.ssfspans.expired", float32(expired), nil))
+	metrics.ReportOne(w.traceClient, ssf.Count("ssfspans.expired", float32(expired), nil))
 }
