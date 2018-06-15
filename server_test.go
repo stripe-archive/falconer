@@ -33,7 +33,7 @@ func TestSpanIngest(t *testing.T) {
 	}
 
 	log := logrus.New()
-	falconerServer, err := NewServer(log, &cfg)
+	falconerServer, err := NewServer(log, dummyTraceClient(), &cfg)
 	if err != nil {
 		log.WithError(err).Fatal("Failed to create server")
 	}
@@ -70,5 +70,5 @@ func TestSpanIngest(t *testing.T) {
 	client.SendSpan(context.Background(), testSpan)
 
 	// Check that our message has arrived on the other side
-	require.Equal(t, atomic.LoadUint64(&falconerServer.spanCount), uint64(1))
+	require.Equal(t, atomic.LoadUint64(&falconerServer.receivedCount), uint64(1))
 }
