@@ -7,6 +7,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/stripe/falconer"
 	"github.com/stripe/veneur/sinks/grpsink"
+	"github.com/stripe/veneur/ssf"
 	"github.com/stripe/veneur/trace"
 
 	"google.golang.org/grpc"
@@ -50,6 +51,7 @@ func main() {
 
 		trace.DefaultClient = client
 		trace.Service = "falconer"
+		ssf.NamePrefix = "falconer."
 	}
 
 	grpclog.SetLoggerV2(logrusWrapper{log})
