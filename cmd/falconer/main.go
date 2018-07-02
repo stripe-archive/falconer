@@ -12,6 +12,8 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/grpclog"
+	"google.golang.org/grpc/health"
+	"google.golang.org/grpc/health/grpc_health_v1"
 )
 
 var (
@@ -63,6 +65,14 @@ func main() {
 
 	falconer.RegisterFalconerServer(grpcServer, falconerServer)
 	grpsink.RegisterSpanSinkServer(grpcServer, falconerServer)
+
+	// Set up a healthcheck server.
+	healthsrv := health.NewServer()
+	for name, _ := range grpcServer.GetServiceInfo() {
+		healthsrv.SetServingStatus(name, grpc_health_v1.HealthCheckResponse_SERVING)
+	}
+	grpc_health_v1.RegisterHealthServer(grpcServer, healthsrv)
+
 	log.Debug("Falconer started")
 	grpcServer.Serve(lis)
 }

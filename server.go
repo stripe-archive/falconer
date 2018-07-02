@@ -168,7 +168,6 @@ func (s *Server) Flush() {
 }
 
 func (s *Server) assessGoroutines() {
-
 	s.log.Debug("assessing goroutines")
 	s.grEWMA.all.Add(float64(runtime.NumGoroutine()))
 	s.grEWMA.sendSpans.Add(float64(atomic.LoadUint32(s.grCounts.sendSpans)))
