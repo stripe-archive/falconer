@@ -117,10 +117,10 @@ func (w *Worker) AddSpan(span *ssf.SSFSpan) {
 		expiration: time.Now().Add(w.expirationDuration).Unix(),
 	})
 
-	atomic.AddUint64(&w.itemCount, 1)
-
 	if dup {
 		w.log.WithField("span-id", span.Id).Error("Collision on span, discarding new span")
+	} else {
+		atomic.AddUint64(&w.itemCount, 1)
 	}
 
 	if len(w.Watches) > 0 {
