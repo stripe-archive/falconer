@@ -1,7 +1,10 @@
 package main
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"flag"
+	"io/ioutil"
 	"net"
 
 	"github.com/sirupsen/logrus"
@@ -11,6 +14,7 @@ import (
 	"github.com/stripe/veneur/trace"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/grpclog"
 	"google.golang.org/grpc/health"
 	"google.golang.org/grpc/health/grpc_health_v1"
@@ -42,6 +46,31 @@ func main() {
 		log.WithError(err).Fatal("Failed to listen")
 	}
 	var opts []grpc.ServerOption
+	if len(config.TLS.Certificates) > 0 {
+		tlsConfig := &tls.Config{
+			Certificates: []tls.Certificate{},
+			ClientCAs:    x509.NewCertPool(),
+		}
+		for _, certConfig := range config.TLS.Certificates {
+			cert, err := tls.LoadX509KeyPair(certConfig.Cert, certConfig.Key)
+			if err != nil {
+				log.WithError(err).Fatal("Failed to load TLS certificate")
+			}
+			tlsConfig.Certificates = append(tlsConfig.Certificates, cert)
+		}
+
+		for _, caConfig := range config.TLS.ClientCas {
+			caData, err := ioutil.ReadFile(caConfig)
+			if err != nil {
+				log.WithError(err).Fatal("Failed to read client CA")
+			}
+			if !tlsConfig.ClientCAs.AppendCertsFromPEM(caData) {
+				log.Fatal("Failed to load client CA")
+			}
+			tlsConfig.ClientAuth = tls.RequireAndVerifyClientCert
+		}
+		opts = append(opts, grpc.Creds(credentials.NewTLS(tlsConfig)))
+	}
 	grpcServer := grpc.NewServer(opts...)
 
 	var client *trace.Client

@@ -32,7 +32,7 @@ RUN git reset --hard HEAD && git status
 # because we are guaranteed only one version of Go
 # used to build protoc-gen-go
 RUN go generate
-RUN dep ensure -v
+RUN dep check
 # Exclude vendor from gofmt checks.
 RUN mv vendor ../ && gofmt -w . && mv ../vendor .
 
