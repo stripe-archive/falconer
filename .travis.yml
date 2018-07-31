@@ -34,7 +34,7 @@ before_script:
   # fileDescriptor0 depending on which version of Go was used
   # to build protoc-gen-go.
   - git checkout falconer.pb.go
-  - dep ensure -v
+  - dep check
 
   - mv vendor ../ && gofmt -w . && mv ../vendor .
 
