@@ -22,3 +22,16 @@ span_expiration_duration_seconds: "300s"
 
 # The address to which statsd-style metrics should be sent.
 statsd_address: "localhost:8200"
+
+# Configuration for TLS termination.
+tls:
+  # A list of certificate/key pairs for falconer to present to clients. If this
+  # list is empty, TLS termination is disabled.
+  certificates:
+    - cert: '/etc/foo.crt'
+      key: '/etc/foo.key'
+  # A list of client CAs. If this list is empty, client certificates are
+  # ignored. Otherwise, clients must present a certificate signed by one of the
+  # listed CAs.
+  client_cas:
+    - '/etc/foo.pem'
