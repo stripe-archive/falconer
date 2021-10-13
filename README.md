@@ -1,3 +1,7 @@
+> <img src="https://stripe.dev/images/badges/archived.png" width="250">
+>
+> This project is inactive and is no longer being maintained.
+
 # Falconer
 
 Falconer is a tracing span collector, buffer and RPC service. It collects and stores spans for a limited amount of time whilst allowing searches of current spans, streaming search of incoming spans and retrieval of entire traces. It would be best paired with [Veneur](https://github.com/stripe/veneur).
